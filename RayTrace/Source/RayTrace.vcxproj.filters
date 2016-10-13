@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="FileFormats.cpp" />
+    <ClCompile Include="KDTree.cpp" />
+    <ClCompile Include="Common.cpp" />
+    <ClCompile Include="Threads.cpp" />
+    <ClCompile Include="RayTrace.cpp" />
+    <ClCompile Include="RenderTask.cpp" />
+    <ClCompile Include="FileOBJ.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RayTrace.h" />
+    <ClInclude Include="Math.h" />
+    <ClInclude Include="Common.h" />
+    <ClInclude Include="FileOBJ.h" />
+  </ItemGroup>
+</Project>
