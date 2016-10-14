@@ -1,12 +1,9 @@
 #ifndef __INC_NANOCORE_JOBS
 #define __INC_NANOCORE_JOBS
 
-#include "Threads.h"
+#include "Common.h"
 
-#include <vector>
-#include <deque>
 
-using namespace std;
 
 class IJobFrame;
 
@@ -28,22 +25,30 @@ private:
 	IJobFrame * m_pFrame;
 };
 
+
+
 class IJobFrame
 {
 public:
 	virtual ~IJobFrame() {}
 
 	virtual void AddJob( IJob * pJob, int typeToWait = -1 ) = 0;
-
-	virtual void AddJob( IJob * pJob, int type, int typeToWait ) = 0;
-
 	virtual void StartNewFrame( int frame ) = 0;
 };
 
-void        ncJobsInit( int numThreads );
-void        ncJobsShutdown();
-IJobFrame * ncJobsCreateFrame();
-bool        ncJobsAreRunning();
-void        ncJobsAdd( IJob * pJob, IJobFrame * pFrame, int type, int typeToWait = -1 );
+
+
+class IJobManager
+{
+public:
+	virtual ~IJobManager() {}
+
+	virtual void Init( int numThreadsm, int maxTypes ) = 0;
+	virtual IJobFrame * CreateJobFrame() = 0;
+	virtual bool IsRunning() = 0;
+	virtual void PrintStats( IJobFrame * p ) = 0;
+
+	static IJobManager * Create();
+};
 
 #endif

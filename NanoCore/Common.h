@@ -1,6 +1,10 @@
 #ifndef __INC_NANOCORE_COMMON
 #define __INC_NANOCORE_COMMON
 
+#ifndef NULL
+	#define NULL 0
+#endif
+
 typedef unsigned char      uint8;
 typedef signed char        int8;
 typedef unsigned short     uint16;

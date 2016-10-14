@@ -146,3 +146,11 @@ uint32 ncGetCurrentThreadId()
 {
 	return GetCurrentThreadId();
 }
+
+void ncGetSystemInfo( ncSystemInfo * pInfo )
+{
+	if( !pInfo ) return;
+	SYSTEM_INFO si;
+	GetSystemInfo( &si );
+	pInfo->ProcessorCount = si.dwNumberOfProcessors;
+}

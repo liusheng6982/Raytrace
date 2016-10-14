@@ -1,18 +1,11 @@
 #include "Jobs.h"
+#include "Threads.h"
+#include <vector>
+#include <deque>
 
+using namespace std;
+class JobManager;
 
-
-class WorkerThread : public ncThread
-{
-public:
-	WorkerThread( JobManager * pJobManager ):m_pActiveJob(NULL), m_pJobManager(pJobManager) {}
-
-	virtual void Run( void* );
-
-private:
-	IJob * m_pActiveJob;
-	JobManager * m_pJobManager;
-};
 
 class JobFrame : public IJobFrame
 {
@@ -26,7 +19,6 @@ public:
 	}
 
 	void StartNewFrame( int frame ) { m_frame = frame; }
-
 	void AddJob( IJob * pJob, int typeToWait = -1 );
 
 	int m_frame;
@@ -49,14 +41,31 @@ public:
 	int       m_maxTypes;
 };
 
-class JobManager
+class WorkerThread : public ncThread
 {
 public:
-	JobManager( int numThreads );
-	~JobManager();
+	WorkerThread( JobManager * pJobManager ):m_pActiveJob(NULL), m_pJobManager(pJobManager) {}
 
-	void AddJob( IJob * p, int type );
-	void AddJobs( IJob ** p, int count, int type );
+	virtual void Run( void* );
+
+private:
+	IJob * m_pActiveJob;
+	JobManager * m_pJobManager;
+};
+
+class JobManager : public IJobManager
+{
+public:
+	JobManager();
+	virtual ~JobManager();
+
+	virtual void Init( int numThreads, int maxTypes );
+	virtual IJobFrame * CreateJobFrame();
+	virtual bool IsRunning();
+	virtual void PrintStats( IJobFrame * p );
+
+	void AddJob( IJob * p );
+	void AddJobs( IJob ** p, int count );
 	IJob * GetJob();
 
 	mutable int m_jobsCount;
@@ -64,11 +73,21 @@ public:
 	ncCriticalSection   * m_csAvailable;
 	deque<IJob*>          m_available;
 	vector<WorkerThread*> m_threads;
+	int                   m_maxTypes;
 };
 
+
+void IJob::SetType( int type )
+{
+	m_type = type;
+}
+void IJob::SetFrame( IJobFrame * p )
+{
+	m_pFrame = p;
+}
 void JobFrame::AddJob( IJob * pJob, int typeToWait )
 {
-	pJob->m_pFrame = this;
+	pJob->SetFrame( this );
 
 	JobType * pJobType = m_pJobTypes + pJob->GetType();
 
@@ -83,7 +102,10 @@ void JobFrame::AddJob( IJob * pJob, int typeToWait )
 		m_jobsCount++;
 	}
 }
-
+IJobManager * IJobManager::Create()
+{
+	return new JobManager();
+}
 void WorkerThread::Run( void* )
 {
 	ncDebugOutput( "Worker thread %X started.\n", this );
@@ -99,7 +121,7 @@ void WorkerThread::Run( void* )
 
 		int type = pJob->GetType();
 
-		JobFrame * frame = pJob->GetFrame();
+		JobFrame * frame = (JobFrame*)pJob->GetFrame();
 		JobFrame::JobType * ptr = &frame->m_pJobTypes[type];
 
 		{
@@ -117,32 +139,45 @@ void WorkerThread::Run( void* )
 		m_pJobManager->m_jobsCount--;
 	}
 }
-
-JobManager::JobManager( int numThreads )
+JobManager::JobManager()
 {
 	m_jobsCount = 0;
 	m_csAvailable = ncCriticalSectionCreate();
-	for( int i=0; i<numThreads; ++i ) {
-		WorkerThread * p = new WorkerThread( this );
-		m_threads.push_back( p );
-		p->Start( NULL );
-	}
 }
-
 JobManager::~JobManager()
 {
 	ncCriticalSectionDelete( m_csAvailable );
 	for( size_t i=0; i<m_threads.size(); ++i )
 		delete m_threads[i];
 }
-
+void JobManager::Init( int numThreads, int maxTypes )
+{
+	if( !numThreads ) {
+		ncSystemInfo si;
+		ncGetSystemInfo( &si );
+		numThreads = si.ProcessorCount;
+	}
+	for( int i=0; i<numThreads; ++i ) {
+		WorkerThread * p = new WorkerThread( this );
+		m_threads.push_back( p );
+		p->Start( NULL );
+	}
+	m_maxTypes = maxTypes;
+}
+IJobFrame * JobManager::CreateJobFrame()
+{
+	return new JobFrame( this, m_maxTypes );
+}
+bool JobManager::IsRunning()
+{
+	return m_jobsCount > 0;
+}
 void JobManager::AddJob( IJob * p )
 {
 	ncCriticalSectionScope cs( m_csAvailable ); 
 	m_available.push_back( p );
 	m_jobsCount++;
 }
-
 void JobManager::AddJobs( IJob ** p, int count )
 {
 	ncCriticalSectionScope cs( m_csAvailable );
@@ -150,17 +185,23 @@ void JobManager::AddJobs( IJob ** p, int count )
 		m_available.push_back( p[i] );
 	m_jobsCount += count;
 }
-
-
-
 IJob * JobManager::GetJob()
 {
 	ncCriticalSectionScope cs( m_csAvailable );
-
 	if( m_available.empty())
 		return NULL;
-
 	IJob * p = m_available.front();
 	m_available.pop_front();
 	return p;
+}
+void JobManager::PrintStats( IJobFrame * p )
+{
+	ncDebugOutput( "Job manager CS wait: %ld us\n", ncTickToMicroseconds( ncCriticalSectionGetWaitTicks( m_csAvailable )));
+
+	JobFrame * jf = (JobFrame*)p;
+
+	uint64 u = 0;
+	for( int i=0; i<jf->m_maxTypes; ++i )
+		u += ncCriticalSectionGetWaitTicks( jf->m_pJobTypes[i].cs );
+	ncDebugOutput( "Job frame CS wait: %ld us\n", u );
 }

@@ -50,4 +50,12 @@ uint64 ncTickToMicroseconds( uint64 ticks );
 void   ncDebugOutput( const char * pcFormat, ... );
 
 
+struct ncSystemInfo
+{
+	int ProcessorCount;
+};
+
+void ncGetSystemInfo( ncSystemInfo * pInfo );
+
+
 #endif

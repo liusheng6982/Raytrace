@@ -1,4 +1,9 @@
+#include <NanoCore/Threads.h>
 #include <NanoCore/Jobs.h>
+#include <vector>
+
+using namespace std;
+
 
 enum {
 	JOBTYPE_MAIN,
@@ -46,8 +51,8 @@ struct MergeCulledJob : public IJob
 		ncSleep( 3 );
 		ncDebugOutput( "MergeCulled jobon thread %X.\n", ncGetCurrentThreadId() );
 		for( size_t i=0; i<cbjobs.size(); ++i )
-			m_pFrame->AddJob( &cbjobs[i] );
-		m_pFrame->AddJob( &rjob, JOBTYPE_CREATECB );
+			GetFrame()->AddJob( &cbjobs[i] );
+		GetFrame()->AddJob( &rjob, JOBTYPE_CREATECB );
 	}
 };
 MergeCulledJob mcjob;
@@ -59,8 +64,8 @@ struct MainJob : public IJob
 	virtual void Execute() {
 		ncSleep( 200 );
 		for( size_t i=0; i<fcjobs.size(); ++i )
-			m_pFrame->AddJob( &fcjobs[i] );
-		m_pFrame->AddJob( &mcjob, JOBTYPE_FRUSTUMCULL );
+			GetFrame()->AddJob( &fcjobs[i] );
+		GetFrame()->AddJob( &mcjob, JOBTYPE_FRUSTUMCULL );
 		ncDebugOutput( "Main job on thread %X.\n", ncGetCurrentThreadId() );
 	}
 };
@@ -69,20 +74,20 @@ MainJob mjob;
 
 int main()
 {
-	JobManager * jm = new JobManager( 4 );
-	JobFrame * jf = new JobFrame( jm, JOBTYPE_MAX );
+	IJobManager * jm = IJobManager::Create();
+	jm->Init( 0, JOBTYPE_MAX );
+	IJobFrame * jf = jm->CreateJobFrame();
+
 	jf->AddJob( &mjob );
 
-	while( jf->m_jobsCount || jm->m_jobsCount ) {
+	while( jm->IsRunning() ) {
 		ncSleep( 5 );
 	}
 
-	ncDebugOutput( "Job manager CS wait: %ld us\n", ncTickToMicroseconds( ncCriticalSectionGetWaitTicks( jm->m_csAvailable )));
+	jm->PrintStats( jf );
 
-	uint64 u = 0;
-	for( int i=0; i<jf->m_maxTypes; ++i )
-		u += ncCriticalSectionGetWaitTicks( jf->m_pJobTypes[i].cs );
-	ncDebugOutput( "Job frame CS wait: %ld us\n", u );
+	delete jf;
+	delete jm;
 
 	return 0;
 }
