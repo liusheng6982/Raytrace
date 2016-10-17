@@ -10,21 +10,7 @@
 
 
 
-struct RayInfo
-{
-	Vec3 pos, dir;
-	float hitlen;
-	Vec3  n;
-	const Triangle * tri;
 
-	RayInfo() : hitlen(1000000.0f), tri(0) {}
-
-	Vec3 GetHit() const {
-		if( tri )
-			return pos + dir * hitlen + n * 0.001f;
-		return pos + dir * hitlen;
-	}
-};
 
 struct Camera
 {
@@ -37,31 +23,15 @@ struct Camera
 	void GetAxes( Vec3 & at, Vec3 & up, Vec3 & right );
 };
 
-struct KDTreeNode
-{
-	Vec3 min, max;
-	int numTris, axis;
-	const Triangle * pTris;
-	KDTreeNode *left, *right;
 
-	bool IntersectRay( RayInfo & ray );
-};
-
-struct KDTreeInfo
-{
-	Triangle * pTris;
-	int numNodes;
-	int maxTrianglesPerNode;
-};
 
 
 
 uint32 GetTime();
 
-KDTreeNode * BuildKDTree( KDTreeInfo * info, int l, int r );
 
-int LoadObjFile( const char * pcFile, Triangle ** pTris );
-int GetLoadingProgress();
+
+
 int WriteImage( const uint8 * pImage, int width, int height, const char * pcPathFileName );
 
 void ComputeGridDestribution( int w, int h, int * order );

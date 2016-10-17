@@ -8,12 +8,12 @@
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="RayTrace.cpp" />
     <ClCompile Include="RenderTask.cpp" />
-    <ClCompile Include="FileOBJ.cpp" />
+    <ClCompile Include="ObjectFileLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RayTrace.h" />
-    <ClInclude Include="Math.h" />
     <ClInclude Include="Common.h" />
-    <ClInclude Include="FileOBJ.h" />
+    <ClInclude Include="ObjectFileLoader.h" />
+    <ClInclude Include="KDTree.h" />
   </ItemGroup>
 </Project>

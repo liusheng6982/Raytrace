@@ -97,7 +97,7 @@
   <ItemGroup>
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="FileFormats.cpp" />
-    <ClCompile Include="FileOBJ.cpp" />
+    <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RayTrace.cpp" />
@@ -106,8 +106,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
-    <ClInclude Include="FileOBJ.h" />
-    <ClInclude Include="Math.h" />
+    <ClInclude Include="KDTree.h" />
+    <ClInclude Include="ObjectFileLoader.h" />
     <ClInclude Include="RayTrace.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

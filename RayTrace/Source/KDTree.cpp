@@ -1,25 +1,63 @@
-#include "RayTrace.h"
+#include "KDTree.h"
+
+
+
+void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
+{
+	const int numTris = pModel->GetNumTriangles();
+
+	m_Triangles.resize( numTris );
+	for( int i=0; i<numTris; ++i ) {
+		Triangle & t = m_Triangles[i];
+		const IObjectFileLoader::Triangle * p = pModel->GetTriangle( i );
+
+		for( int j=0; j<3; ++j ) {
+			t.pos[j] = *pModel->GetVertexPos( p->pos[j] );
+			t.uv[j] = *pModel->GetVertexUV( p->uv[j] );
+		}
+
+		t.n = cross( ncVec3(t.pos[1]) - ncVec3(t.pos[0]), ncVec3(t.pos[2]) - ncVec3(t.pos[0]) );
+		if( len( t.n ) < 0.00001f )
+			break;
+		t.n = normalize( t.n );
+		t.d = -dot( t.n, t.pos[0] );
+
+#ifdef BARYCENTRIC_DATA_TRIANGLES
+		t.v0 = t.pos[1] - t.pos[0];
+		t.v1 = t.pos[2] - t.pos[0];
+		t.dot00 = dot( t.v0, t.v0 );
+		t.dot01 = dot( t.v0, t.v1 );
+		t.dot11 = dot( t.v1, t.v1 );
+		t.invDenom = 1.f / (t.dot00 * t.dot11 - t.dot01 * t.dot01);
+#endif
+	}
+	m_maxTrianglesPerNode = maxTrianglesPerNode;
+	m_numNodes = 0;
+	m_pRoot = BuildTree( 0, numTris );
+}
+
 
 #define EPSILON 0.000001
 
-KDTreeNode * BuildKDTree( KDTreeInfo * pInfo, int l, int r )
+KDTreeNode * KDTree::BuildTree( int l, int r )
 {
-	if( l >= r ) return 0;
+	if( l >= r )
+		return 0;
 
-	pInfo->numNodes++;
+	m_numNodes++;
 
-	Vec3 min = pInfo->pTris[l].pos[0], max = pInfo->pTris[l].pos[0];
+	ncVec3 min = pInfo->pTris[l].pos[0], max = pInfo->pTris[l].pos[0];
 	for( int i=l; i<r; ++i ) {
-		const Triangle & t = pInfo->pTris[i];
+		const Triangle & t = m_Triangles[i];
 		for( int j=0; j<3; ++j ) {
-			const Vec3 & v = t.pos[j];
+			const ncVec3 & v = t.pos[j];
 			if( v.x < min.x ) min.x = v.x; else if( v.x > max.x ) max.x = v.x;
 			if( v.y < min.y ) min.y = v.y; else if( v.y > max.y ) max.y = v.y;
 			if( v.z < min.z ) min.z = v.z; else if( v.z > max.z ) max.z = v.z;
 		}
 	}
 
-	Vec3 size = max-min;
+	ncVec3 size = max-min;
 	int axis = 0;
 	if( size.y > size.x ) axis = 1;
 	if( size.z > size.x && size.z > size.y ) axis = 2;
@@ -31,11 +69,11 @@ KDTreeNode * BuildKDTree( KDTreeInfo * pInfo, int l, int r )
 
 	int nL=0, nR=0, nC=0;
 
-	if( r-l <= pInfo->maxTrianglesPerNode ) {
+	if( r-l <= m_maxTrianglesPerNode ) {
 		l1 = r;
 	} else {
 		for( int i=l; i<=l2; ++i ) {
-			Triangle & t = pInfo->pTris[i];
+			Triangle & t = m_Triangles[i];
 			float tmin = t.pos[0][axis], tmax = t.pos[0][axis];
 
 			float p2 = t.pos[1][axis], p3 = t.pos[2][axis];
@@ -87,9 +125,9 @@ bool KDTreeNode::IntersectRay( RayInfo & ray )
 	if( ray.pos.x < min.x || ray.pos.y < min.y || ray.pos.z < min.z ||
 		ray.pos.x > max.x || ray.pos.y > max.y || ray.pos.z > max.z )
 	{
-		Vec3 dir = ray.dir;
-		Vec3 bs( dir.x > 0 ? min.x : max.x, dir.y > 0 ? min.y : max.y, dir.z > 0 ? min.z : max.z );
-		Vec3 len = bs - ray.pos;
+		ncVec3 dir = ray.dir;
+		ncVec3 bs( dir.x > 0 ? min.x : max.x, dir.y > 0 ? min.y : max.y, dir.z > 0 ? min.z : max.z );
+		ncVec3 len = bs - ray.pos;
 
 		for( int i=0; i<3; ++i )
 			len[i] = fabsf( dir[i] ) > 0.0001f ? len[i] / dir[i] : -10000.0f;
@@ -100,7 +138,7 @@ bool KDTreeNode::IntersectRay( RayInfo & ray )
 
 		if( len[axis] <= 0 ) return false;
 
-		Vec3 i = ray.pos + dir * len[axis];
+		ncVec3 i = ray.pos + dir * len[axis];
 		switch( axis ) {
 			case 0: if( i.y < min.y || i.y > max.y || i.z < min.z || i.z > max.z ) return false; break;
 			case 1: if( i.z < min.z || i.z > max.z || i.x < min.x || i.x > max.x ) return false; break;
@@ -117,7 +155,7 @@ bool KDTreeNode::IntersectRay( RayInfo & ray )
 		const Triangle & t = ptr[i];
 
 #ifdef COMPACT_TRIANGLES
-		Vec3 e1, e2, P, Q, T;
+		ncVec3 e1, e2, P, Q, T;
 		float det, inv_det, u, v;
 		float k;
  
@@ -170,24 +208,24 @@ bool KDTreeNode::IntersectRay( RayInfo & ray )
 
 		if( k > ray.hitlen || k < 0 ) continue;
 
-		Vec3 hit = ray.pos + ray.dir * k;
+		ncVec3 hit = ray.pos + ray.dir * k;
 
 #ifdef BARYCENTRIC_DATA_TRIANGLES
-		Vec3 v0 = t.v0;
-		Vec3 v1 = t.v1;
+		ncVec3 v0 = t.v0;
+		ncVec3 v1 = t.v1;
 		float dot00 = t.dot00;
 		float dot01 = t.dot01;
 		float dot11 = t.dot11;
 		float invDenom = t.invDenom;
 #else
-		Vec3 v0 = t.pos[1] - t.pos[0];
-		Vec3 v1 = t.pos[2] - t.pos[0];
+		ncVec3 v0 = t.pos[1] - t.pos[0];
+		ncVec3 v1 = t.pos[2] - t.pos[0];
 		float dot00 = dot( v0, v0 );
 		float dot01 = dot( v0, v1 );
 		float dot11 = dot( v1, v1 );
 		float invDenom = 1.f / (dot00 * dot11 - dot01 * dot01);
 #endif
-		Vec3 v2 = hit - t.pos[0];
+		ncVec3 v2 = hit - t.pos[0];
 		float dot02 = dot( v0, v2 );
 		float dot12 = dot( v1, v2 );
 
