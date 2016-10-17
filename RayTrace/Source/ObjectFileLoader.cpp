@@ -24,10 +24,10 @@ public:
 	virtual int  GetLoadingProgress() {
 		return m_Progress;
 	}
-	virtual const ncFloat3 * GetVertexPos( int i ) {
+	virtual const float3 * GetVertexPos( int i ) {
 		return &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE];
 	}
-	virtual const ncFloat2 * GetVertexUV( int i ) {
+	virtual const float2 * GetVertexUV( int i ) {
 		return &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE];
 	}
 	virtual const Triangle * GetTriangle( int i ) {
@@ -49,8 +49,8 @@ public:
 		container.clear();
 	}
 
-	vector<ncFloat3*> m_Positions;
-	vector<ncFloat2*> m_UVs;
+	vector<float3*> m_Positions;
+	vector<float2*> m_UVs;
 	vector<Triangle*> m_Triangles;
 	int m_PositionCount, m_UVCount, m_TriangleCount;
 
@@ -123,11 +123,11 @@ bool ObjectFileLoader::Load( const char * pcFilename )
 		switch( line[0] ) {
 			case 'v':
 				if( line[1] == 't') {
-					ncFloat2 uv;
+					float2 uv;
 					sscanf( line+3, "%f %f", &uv.x, &uv.y );
 					AddElement( uv, m_UVs, m_UVCount );
 				} else {
-					ncFloat3 pos;
+					float3 pos;
 					sscanf( line+3, "%f %f %f", &pos.x, &pos.y, &pos.z );
 					AddElement( pos, m_Positions, m_PositionCount );
 				}

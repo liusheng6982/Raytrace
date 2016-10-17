@@ -74,12 +74,12 @@
   <ItemGroup>
     <ClInclude Include="Common.h" />
     <ClInclude Include="Jobs.h" />
-    <ClInclude Include="Mathematic.h" />
+    <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Threads.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Jobs.cpp" />
-    <ClCompile Include="Mathematic.cpp" />
+    <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Threads.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

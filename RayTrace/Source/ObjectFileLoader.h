@@ -15,8 +15,8 @@ public:
 		int material;
 	};
 
-	virtual const ncFloat3 * GetVertexPos( int i ) = 0;
-	virtual const ncFloat2 * GetVertexUV( int i ) = 0;
+	virtual const float3   * GetVertexPos( int i ) = 0;
+	virtual const float2   * GetVertexUV( int i ) = 0;
 	virtual const Triangle * GetTriangle( int face ) = 0;
 	virtual int              GetNumTriangles() = 0;
 

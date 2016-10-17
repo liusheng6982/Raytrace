@@ -18,10 +18,6 @@ struct ncFloat2 {
 	float x,y;
 };
 
-struct ncFloat3 {
-	float x,y,z;
-};
-
 struct ncFloat4 {
 	float x,y,z,w;
 };

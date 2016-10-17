@@ -3,10 +3,6 @@
 
 #include <Math.h>
 #include <NanoCore/Common.h>
-
-
-
-
-
+#include <NanoCore/Mathematics.h>
 
 #endif

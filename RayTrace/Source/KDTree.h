@@ -3,37 +3,41 @@
 
 #include <vector>
 #include "ObjectFileLoader.h"
-#include <NanoCore/Mathematic.h>
 
-using namespace std;
+
 
 #define BARYCENTRIC_DATA_TRIANGLES
 
+
+
 struct Triangle
 {
-	ncFloat3 pos[3];
-	ncFloat3 n;
-	float    d;
+	float3  pos[3], n;
+	float   d;
 
 #ifdef BARYCENTRIC_DATA_TRIANGLES
-	ncFloat3 v0, v1;
+	float3 v0, v1;
 	float dot00, dot01, dot11, invDenom;
 #endif
 
-	ncFloat2  uv[3];
+	float2  uv[3];
 	int       mtl;
 };
 
 struct RayInfo
 {
-	ncVec3 pos, dir;
+	float3 pos, dir;
 	float hitlen;
-	ncVec3  n;
+	float3  n;
 	const Triangle * tri;
 
 	RayInfo() : hitlen(1000000.0f), tri(0) {}
 
-	ncVec3 GetHit() const {
+	void Clear() {
+		tri = NULL;
+	}
+
+	float3 GetHit() const {
 		if( tri )
 			return pos + dir * hitlen + n * 0.001f;
 		return pos + dir * hitlen;
@@ -43,12 +47,11 @@ struct RayInfo
 class KDTree
 {
 public:
-	struct KDTreeNode
-	{
-		ncVec3 min, max;
+	struct Node {
+		float3 min, max;
 		int numTris, axis;
 		const Triangle * pTris;
-		KDTreeNode *left, *right;
+		Node *left, *right;
 
 		bool IntersectRay( RayInfo & ray );
 	};
@@ -57,12 +60,13 @@ public:
 	~KDTree();
 
 	void Build( IObjectFileLoader * pModel, int maxTrianglesPerNode );
+	void Intersect( RayInfo & ray );
 
 private:
-	KDTreeNode * BuildTree( int l, int r );
+	Node * BuildTree( int l, int r );
 
-	KDTreeNode * m_pRoot;
-	vector<Triangle> m_Triangles;
+	Node * m_pRoot;
+	std::vector<Triangle> m_Triangles;
 	int m_numNodes;
 	int m_maxTrianglesPerNode;
 };

@@ -3,12 +3,12 @@
   <ItemGroup>
     <ClInclude Include="Threads.h" />
     <ClInclude Include="Jobs.h" />
-    <ClInclude Include="Mathematic.h" />
     <ClInclude Include="Common.h" />
+    <ClInclude Include="Mathematics.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Jobs.cpp" />
-    <ClCompile Include="Mathematic.cpp" />
+    <ClCompile Include="Mathematics.cpp" />
   </ItemGroup>
 </Project>

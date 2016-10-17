@@ -1,5 +1,5 @@
 #include <math.h>
-#include "Math.h"
+#include "Mathematics.h"
 
 float ncSqrt( float x )
 {
