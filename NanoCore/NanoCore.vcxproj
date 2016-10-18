@@ -76,11 +76,13 @@
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Threads.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Threads.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
