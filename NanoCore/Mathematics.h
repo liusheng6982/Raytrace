@@ -6,7 +6,7 @@
 
 
 float ncSqrt( float x );
-
+float ncTan( float x );
 
 
 struct float2

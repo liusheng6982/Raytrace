@@ -1,32 +1,6 @@
 #include <Windows.h>
 #include "RayTrace.h"
 
-void Camera::InitRay( int x, int y, RayInfo & ray ) {
-	ray.pos = pos;
-	ray.hitlen = 1000000000.f;
-	ray.tri = 0;
-	float kx = (x*2.f/width - 1) * tanf( fovy * 3.1415f / 180.0f / 2 ) * width / height;
-	float ky = (y*2.f/height - 1) * tanf( fovy * 3.1415f / 180.0f / 2 );
-	ray.dir = normalize( at + right * kx + up * ky );
-}
-
-void Camera::GetAxes( Vec3 & _at, Vec3 & _up, Vec3 & _right )
-{
-	_right = right * (tanf( fovy * 3.1415f / 180.0f / 2 ) * width / height);
-	_up = up * tanf( fovy * 3.1415f / 180.0f / 2 );
-	_at = at;
-}
-
-void Camera::Orthogonalize() {
-	at = normalize( at );
-	right = normalize( cross( up, at ));
-	up = normalize( cross( right, at ));
-}
-
-uint32 GetTime()
-{
-	return timeGetTime();
-}
 
 void ComputeGridDestribution( int w, int h, int * order )
 {

@@ -8,11 +8,13 @@
     <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Threads.cpp" />
+    <ClCompile Include="Camera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RayTrace.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="ObjectFileLoader.h" />
     <ClInclude Include="KDTree.h" />
+    <ClInclude Include="Camera.h" />
   </ItemGroup>
 </Project>

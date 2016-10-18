@@ -5,3 +5,8 @@ float ncSqrt( float x )
 {
 	return sqrtf( x );
 }
+
+float ncTan( float x )
+{
+	return tanf( x );
+}

@@ -9,24 +9,6 @@
 #pragma warning( disable : 4996 )
 
 
-
-
-
-struct Camera
-{
-	float3 pos, at,up,right;
-	float fovy;
-	int width, height;
-
-	void InitRay( int x, int y, RayInfo & ray );
-	void Orthogonalize();
-	void GetAxes( Vec3 & at, Vec3 & up, Vec3 & right );
-};
-
-
-
-
-
 uint32 GetTime();
 
 

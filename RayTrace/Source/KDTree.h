@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "ObjectFileLoader.h"
+#include "Camera.h"
 
 
 
@@ -32,6 +33,8 @@ struct RayInfo
 	const Triangle * tri;
 
 	RayInfo() : hitlen(1000000.0f), tri(0) {}
+
+	void Init( int x, int y, const Camera & cam );
 
 	void Clear() {
 		tri = NULL;
