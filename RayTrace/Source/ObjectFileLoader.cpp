@@ -13,25 +13,25 @@ using namespace std;
 class ObjectFileLoader : public IObjectFileLoader
 {
 public:
-	ObjectFileLoader() : m_Progress(0) {}
+	ObjectFileLoader() : m_Progress(0), m_TriangleCount(0), m_PositionCount(0), m_UVCount(0) {}
 	virtual ~ObjectFileLoader() {
 		EraseContainer( m_Positions );
 		EraseContainer( m_UVs );
 		EraseContainer( m_Triangles );
 	}
 
-	virtual bool Load( const char * pcFilename );
+	virtual bool Load( const wchar_t * pwFilename );
 	virtual int  GetLoadingProgress() {
 		return m_Progress;
 	}
 	virtual const float3 * GetVertexPos( int i ) {
-		return &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE];
+		return (i < m_PositionCount) ? &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
 	virtual const float2 * GetVertexUV( int i ) {
-		return &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE];
+		return (i < m_UVCount) ? &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
 	virtual const Triangle * GetTriangle( int i ) {
-		return &m_Triangles[i/BUCKET_SIZE][i%BUCKET_SIZE];
+		return (i < m_TriangleCount) ? &m_Triangles[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
 	virtual int GetNumTriangles() {
 		return m_TriangleCount;
@@ -66,8 +66,8 @@ struct TextFileReadStream
 	FILE * fp;
 	int size;
 
-	TextFileReadStream( const char * pc ) {
-		fp = fopen( pc, "rt" );
+	TextFileReadStream( const wchar_t * pw ) {
+		fp = _wfopen( pw, L"rb" );
 		bufsize = bufp = 0;
 		fseek( fp, 0, SEEK_END );
 		size = ftell( fp );
@@ -106,9 +106,9 @@ struct TextFileReadStream
 };
 
 
-bool ObjectFileLoader::Load( const char * pcFilename )
+bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 {
-	TextFileReadStream f( pcFilename );
+	TextFileReadStream f( pwFilename );
 	if( !f.Exist())
 		return false;
 
@@ -140,9 +140,9 @@ bool ObjectFileLoader::Load( const char * pcFilename )
 					f.pos[i]--;
 					f.uv[i]--;
 
-					if( f.pos[i] >= (int)m_Positions.size())
+					if( f.pos[i] >= m_PositionCount )
 						break;
-					if( f.uv[i] >= (int)m_UVs.size())
+					if( f.uv[i] >= m_UVCount )
 						f.uv[i] = 0;
 
 					// add a face per each vertex after first 2 - create a fan of triangles

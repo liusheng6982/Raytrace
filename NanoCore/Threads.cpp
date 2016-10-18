@@ -154,3 +154,10 @@ void ncGetSystemInfo( ncSystemInfo * pInfo )
 	GetSystemInfo( &si );
 	pInfo->ProcessorCount = si.dwNumberOfProcessors;
 }
+
+std::wstring ncGetCurrentFolder()
+{
+	wchar_t wPath[MAX_PATH];
+	GetCurrentDirectory( MAX_PATH, wPath );
+	return std::wstring(wPath);
+}

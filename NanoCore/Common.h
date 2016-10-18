@@ -14,13 +14,4 @@ typedef signed long        int32;
 typedef unsigned long long uint64;
 typedef signed long long   int64;
 
-struct ncFloat2 {
-	float x,y;
-};
-
-struct ncFloat4 {
-	float x,y,z,w;
-};
-
-
 #endif

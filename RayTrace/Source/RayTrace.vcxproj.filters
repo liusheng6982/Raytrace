@@ -4,11 +4,10 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="FileFormats.cpp" />
     <ClCompile Include="KDTree.cpp" />
+    <ClCompile Include="RayTrace.cpp" />
+    <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Threads.cpp" />
-    <ClCompile Include="RayTrace.cpp" />
-    <ClCompile Include="RenderTask.cpp" />
-    <ClCompile Include="ObjectFileLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RayTrace.h" />

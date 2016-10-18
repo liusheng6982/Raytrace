@@ -1,9 +1,15 @@
-#include <windows.h>
-#include <stdlib.h>
-#include <string.h>
-#include <tchar.h>
-#include <stdio.h>
-#include "RayTrace.h"
+//#include <windows.h>
+//#include <stdlib.h>
+//#include <string.h>
+//#include <tchar.h>
+//#include <stdio.h>
+//#include "RayTrace.h"
+
+#include <NanoCore/Threads.h>
+#include <NanoCore/MainWindow.h>
+#include "ObjectFileLoader.h"
+#include "KDTree.h"
+#include <memory>
 
 #define SPONZA
 
@@ -11,15 +17,10 @@
 //#define OBJ_FILE "..\\data\\teapot\\teapot.obj"
 //#define OBJ_FILE "..\\data\\san-miguel.obj"
 
-static TCHAR szWindowClass[] = _T("win32app");
-static TCHAR szTitle[] = _T("RayTrace by Zemedelec");
+/*
 
-static HINSTANCE  s_hInstance;
-static HWND       s_hWnd;
 static RenderTask s_rt, s_rtPreview;
-
 static DWORD s_t0 = 0, s_t1 = 0;
-
 enum {
 	STATE_LOAD,
 	STATE_LOADING,
@@ -42,7 +43,9 @@ static void LoadScene( int param )
 	s_rt.numKDTreeNodes = kdti.numNodes;
 	s_rt.numTriangles = numTris;
 }
+*/
 
+/*
 extern int64 rays_traced;
 
 LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -129,54 +132,113 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 					break;
 			}
 			return 0;
-
-		case WM_PAINT: {
-			PAINTSTRUCT ps;
-			HDC hdc = BeginPaint( hWnd, &ps );
-			static BITMAPINFO bmp = { { sizeof(BITMAPINFOHEADER), 0, 0, 1, 24, BI_RGB, 0, 0, 0, 0, 0 } };
-			bmp.bmiHeader.biWidth = s_rt.render_width;
-			bmp.bmiHeader.biHeight = s_rt.render_height;
-			s_rt.GatherRenderBuffer();
-			if( s_rt.pRenderBuffer ) {
-				int ret = StretchDIBits( hdc, 0, 0, 800, 600, 0, 0, s_rt.render_width, s_rt.render_height, s_rt.pRenderBuffer, &bmp, DIB_RGB_COLORS, SRCCOPY );
-			}
-			TextOutA( hdc, 5, 5, s_pcInfo, strlen(s_pcInfo) );
-			EndPaint( hWnd, &ps );
-			break;
-		}
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			break;
-		default:
-			return DefWindowProc( hWnd, message, wParam, lParam );
-    }
-    return 0;
 }
+*/
 
-int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
+class LoadingThread : public ncThread
 {
-    WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, WndProc, 0, 0, hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, szWindowClass, 0 };
-    wcex.hIcon          = LoadIcon( hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
-    wcex.hCursor        = LoadCursor( NULL, IDC_ARROW );
-    wcex.hIconSm        = LoadIcon( hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
-    if( ! RegisterClassEx( &wcex ))
-        return 1;
+public:
+	LoadingThread( std::wstring wFile, KDTree * pTree ) {
+		m_wFile = wFile;
+		m_pTree = pTree;
+		m_pLoader = NULL;
+	}
+	void GetStatus( std::wstring & status ) {
+		if( m_pLoader ) {
+			wchar_t buf[64];
+			swprintf( buf, L"Loading %d %%", m_pLoader->GetLoadingProgress());
+			status += buf;
+		} else
+			status += L"Building KD-tree";
+	}
+	virtual void Run( void* )
+	{
+		m_pLoader = IObjectFileLoader::Create();
+		m_pLoader->Load( m_wFile.c_str() );
+		IObjectFileLoader * p = m_pLoader;
+		m_pLoader = NULL;
+		m_pTree->Build( p, 40 );
+		delete p;
+	}
 
-    s_hInstance = hInstance;
-    s_hWnd = CreateWindow( szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 820, 650, NULL, NULL, hInstance, NULL );
-    if( !s_hWnd )
-        return 1;
+private:
+	std::wstring m_wFile;
+	KDTree * m_pTree;
+	IObjectFileLoader * m_pLoader;
+};
 
-    ShowWindow( s_hWnd, nCmdShow );
-    UpdateWindow( s_hWnd );
-	SetTimer( s_hWnd, 0, 50, 0 );
 
-	s_State = STATE_LOAD;
+class MainWnd : public ncMainWindow
+{
+public:
+	MainWnd()
+	{
+		m_pModel = std::auto_ptr<IObjectFileLoader>( IObjectFileLoader::Create() );
+		m_csStatus = ncCriticalSectionCreate();
+		m_pLoadingThread = NULL;
+	}
+	~MainWnd()
+	{
+		//delete m_pModel;
+		ncCriticalSectionDelete( m_csStatus );
+	}
 
-    MSG msg;
-    while( GetMessage( &msg, NULL, 0, 0 )) {
-        TranslateMessage( &msg );
-        DispatchMessage( &msg );
-    }
-    return (int) msg.wParam;
+	virtual void OnKey( int key )
+	{
+		LoadModel();
+	}
+	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel )
+	{
+	}
+	virtual void OnSize( int w, int h ) {}
+	virtual void OnDraw() {}
+	virtual void OnUpdate()
+	{
+		if( m_pLoadingThread ) {
+			if( m_pLoadingThread->IsRunning()) {
+				std::wstring str;
+				m_pLoadingThread->GetStatus( str );
+				SetStatus( str.c_str() );
+			} else {
+				delete m_pLoadingThread;
+				m_pLoadingThread = NULL;
+				SetStatus( NULL );
+			}
+		}
+	}
+	void LoadModel() {
+		std::wstring wFolder = ncGetCurrentFolder();
+		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Object files(*.obj)\0*.obj\0", L"Load model", true );
+		if( !wFile.empty()) {
+			m_pLoadingThread = new LoadingThread( wFile, &m_kdTree );
+			m_pLoadingThread->Start( NULL );
+		}
+	}
+	void SetStatus( const wchar_t * pcStatus ) {
+		std::wstring s = L"Raytracer | by Sergey Miloykov";
+		if( pcStatus && *pcStatus ) {
+			s += L" | ";
+			s += pcStatus;
+		}
+		SetCaption( s.c_str());
+	}
+
+	std::auto_ptr<IObjectFileLoader> m_pModel;
+	ncCriticalSection * m_csStatus;
+	std::string m_strStatus;
+	LoadingThread * m_pLoadingThread;
+	KDTree          m_kdTree;
+};
+
+int Main()
+{
+	MainWnd * pWnd = new MainWnd();
+	pWnd->Init( 800, 600 );
+	pWnd->SetStatus( NULL );
+
+	while( pWnd->Update()) {
+		ncSleep( 10 );
+	}
+	delete pWnd;
+	return 0;
 }

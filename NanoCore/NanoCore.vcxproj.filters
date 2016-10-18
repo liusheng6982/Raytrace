@@ -5,12 +5,12 @@
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Mathematics.h" />
-    <ClInclude Include="Window.h" />
+    <ClInclude Include="MainWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
-    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="MainWindow.cpp" />
   </ItemGroup>
 </Project>

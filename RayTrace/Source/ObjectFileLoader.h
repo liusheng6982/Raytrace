@@ -1,5 +1,5 @@
-#ifndef __INC_RAYTRACE_FILEOBJ
-#define __INC_RAYTRACE_FILEOBJ
+#ifndef __INC_RAYTRACE_OBJECTFILELOADER
+#define __INC_RAYTRACE_OBJECTFILELOADER
 
 #include "Common.h"
 
@@ -7,7 +7,7 @@ class IObjectFileLoader {
 public:
 	virtual ~IObjectFileLoader() {}
 
-	virtual bool Load( const char * pcFilename ) = 0;
+	virtual bool Load( const wchar_t * pwFilename ) = 0;
 	virtual int  GetLoadingProgress() = 0;
 
 	struct Triangle {

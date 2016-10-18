@@ -2,10 +2,30 @@
 
 #define EPSILON 0.000001
 
+static void DeleteKDTreeNode( KDTree::Node * p )
+{
+	if( p ) {
+		DeleteKDTreeNode( p->left );
+		DeleteKDTreeNode( p->right );
+		delete p;
+	}
+}
 
+KDTree::KDTree()
+{
+	m_pRoot = NULL;
+	m_numNodes = 0;
+}
+
+KDTree::~KDTree()
+{
+	DeleteKDTreeNode( m_pRoot );
+}
 
 void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 {
+	DeleteKDTreeNode( m_pRoot );
+
 	const int numTris = pModel->GetNumTriangles();
 
 	m_Triangles.resize( numTris );

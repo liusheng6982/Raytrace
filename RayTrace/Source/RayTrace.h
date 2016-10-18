@@ -14,7 +14,7 @@
 
 struct Camera
 {
-	Vec3 pos, at,up,right;
+	float3 pos, at,up,right;
 	float fovy;
 	int width, height;
 

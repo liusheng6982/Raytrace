@@ -2,6 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RayTrace", "RayTrace.vcxproj", "{36BF75BD-D00A-4C72-880A-66AFDD8798F9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8E34C416-EF9B-4904-BBCB-55326A109243} = {8E34C416-EF9B-4904-BBCB-55326A109243}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NanoTest", "..\..\NanoTest\Source\NanoTest.vcxproj", "{4D05F0ED-C904-4904-9E8B-BD879FF8F760}"
 	ProjectSection(ProjectDependencies) = postProject
