@@ -167,15 +167,47 @@ private:
 	IObjectFileLoader * m_pLoader;
 };
 
+struct TestThread : public ncThread
+{
+	Image * pImage;
+	virtual void Run(void*)
+	{
+		pImage = new Image();
+		pImage->w = pImage->h = 128;
+		pImage->pBuffer = new uint8[128*128*3];
+		memset( pImage->pBuffer, 0, 128*128*3 );
+
+		int size2 = 7, size = 1 << size2;
+
+		for( int i=size2; i>=0; --i ) {
+			int step = 1<<i;
+			for( int y=0; y<size; y += step )
+				for( int x=0; x<size; x += step ) {
+					if( (x & step) || (y & step) ) {  // only compute pixels, that don't have BOTH coordinates are bigger pow2 - those are already computed
+						uint8 * p = pImage->pBuffer + (x + y*128)*3;
+						p[0] = p[1] = p[2] = 255;
+					} else {
+						uint8 * p = pImage->pBuffer + (x + y*128)*3;
+						p[0] = 255; p[1] = p[2] = 0;
+					}
+					ncSleep( 5 );
+				}
+		}
+	}
+};
+
 
 class MainWnd : public ncMainWindow
 {
 public:
+	TestThread * m_pTest;
+
 	MainWnd()
 	{
 		m_pModel = std::auto_ptr<IObjectFileLoader>( IObjectFileLoader::Create() );
 		m_csStatus = ncCriticalSectionCreate();
 		m_pLoadingThread = NULL;
+		m_pTest = NULL;
 	}
 	~MainWnd()
 	{
@@ -189,11 +221,23 @@ public:
 	}
 	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel )
 	{
+		if( btn_down && !m_pTest ) {
+			m_pTest = new TestThread(); 
+			m_pTest->Start(NULL);
+		}
 	}
 	virtual void OnSize( int w, int h ) {}
-	virtual void OnDraw() {}
+	virtual void OnDraw()
+	{
+		if( m_pTest ) {
+			DrawImage( 0, 0, 128, 128, m_pTest->pImage->pBuffer, 128, 128, 24 );
+		}
+	}
 	virtual void OnUpdate()
 	{
+		if( m_pTest ) {
+			Redraw();
+		}
 		if( m_pLoadingThread ) {
 			if( m_pLoadingThread->IsRunning()) {
 				std::wstring str;

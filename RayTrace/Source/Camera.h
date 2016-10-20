@@ -15,39 +15,34 @@ public:
 
 class Image
 {
+public:
 	int w,h;
+	uint8 * pBuffer;
+
+	Image() : pBuffer(NULL), w(0), h(0) {}
+	~Image() { delete[] pBuffer; }
 };
-
-
-void CoverageQTree( int x, int y, int w, int h, int mask )
-{
-	if( mask & 1 )
-		AddPixel( x, y );
-	if( mask & 2 )
-		AddPixel( x+w-1, y );
-	if( mask & 3 )
-		AddPixel( x, y+h-1 );
-
-	if( w > 2 ) {
-		CoverageQTree( x, y, w/2, h/2, 0 );
-		CoverageQTree( x+w/2, y+h/2, w/2, h/2, 7 );
-		CoverageQTree( x+w/2, y, w/2, h/2, 1 );
-		CoverageQTree( x, y+h/2, w/2, h/2, 1 );
-	} else
-		AddPixel( x+w-1, y+h-1 );
-}
-
-
 
 class ImageTile
 {
 	Image * pImage;
 	int x,y,w,h;
 
-
-
-
-
+	//void Compute
 };
+
+/*int size2 = 6, size = 1 << size2;
+
+for( int i=size2; i>=0; ++i ) {
+	int step = 1<<i;
+	for( int y=0; y<size; y += step )
+		for( int x=0; x<size; x += step ) {
+			if( (x & step) || (y & step) ) {  // only compute pixels, that don't have BOTH coordinates are bigger pow2 - those are already computed
+
+			} else {
+
+			}
+		}
+}*/
 
 #endif

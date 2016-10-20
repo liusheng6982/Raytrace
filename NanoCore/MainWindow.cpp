@@ -48,9 +48,18 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 			s_hDrawDC = NULL;
 			break;
 		}
+		case WM_ERASEBKGND:
+			break;
 		case WM_SIZE: {
 			s_Width = LOWORD(lParam);
-			s_Height = LOWORD(lParam);
+			s_Height = HIWORD(lParam);
+
+			RECT rc;
+			GetClientRect( hWnd, &rc );
+
+			s_Width = rc.right - rc.left;
+			s_Height = rc.bottom - rc.top;
+
 			s_pMainWindow->OnSize( s_Width, s_Height );
 			break;
 		}
