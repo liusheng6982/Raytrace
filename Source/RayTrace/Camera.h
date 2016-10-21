@@ -21,15 +21,13 @@ public:
 
 	Image() : pBuffer(NULL), w(0), h(0) {}
 	~Image() { delete[] pBuffer; }
+
+	void Fill( uint32 color );
 };
 
-class ImageTile
-{
-	Image * pImage;
-	int x,y,w,h;
 
-	//void Compute
-};
+
+
 
 /*int size2 = 6, size = 1 << size2;
 
