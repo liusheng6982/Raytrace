@@ -18,8 +18,9 @@ public:
 		delete[] m_pJobTypes;
 	}
 
-	void StartNewFrame( int frame ) { m_frame = frame; }
-	void AddJob( IJob * pJob, int typeToWait = -1 );
+	virtual void StartNewFrame( int frame ) { m_frame = frame; }
+	virtual void AddJob( IJob * pJob, int typeToWait = -1 );
+	virtual void Stop();
 
 	int m_frame;
 	mutable int m_jobsCount;
@@ -197,11 +198,19 @@ IJob * JobManager::GetJob()
 void JobManager::PrintStats( IJobFrame * p )
 {
 	ncDebugOutput( "Job manager CS wait: %ld us\n", ncTickToMicroseconds( ncCriticalSectionGetWaitTicks( m_csAvailable )));
-
 	JobFrame * jf = (JobFrame*)p;
-
 	uint64 u = 0;
 	for( int i=0; i<jf->m_maxTypes; ++i )
 		u += ncCriticalSectionGetWaitTicks( jf->m_pJobTypes[i].cs );
 	ncDebugOutput( "Job frame CS wait: %ld us\n", u );
+}
+void JobFrame::Stop()
+{
+	for( int i=0; i<m_maxTypes; ++i ) {
+		m_pJobTypes[i].dependant_jobs.clear();
+		m_pJobTypes[i].count = 0;
+	}
+	m_pJobManager->m_available.clear();
+	for( size_t i=0; i<m_pJobManager->m_threads.size(); ++i )
+		m_pJobManager->m_threads[i]->Terminate();
 }

@@ -34,6 +34,7 @@ public:
 
 	virtual void AddJob( IJob * pJob, int typeToWait = -1 ) = 0;
 	virtual void StartNewFrame( int frame ) = 0;
+	virtual void Stop() = 0;
 };
 
 
@@ -43,7 +44,7 @@ class IJobManager
 public:
 	virtual ~IJobManager() {}
 
-	virtual void Init( int numThreadsm, int maxTypes ) = 0;
+	virtual void Init( int numThreads, int maxTypes ) = 0;
 	virtual IJobFrame * CreateJobFrame() = 0;
 	virtual bool IsRunning() = 0;
 	virtual void PrintStats( IJobFrame * p ) = 0;

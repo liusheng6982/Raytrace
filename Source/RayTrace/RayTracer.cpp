@@ -1,4 +1,9 @@
-#include "RayTrace.h"
+#include <NanoCore/Jobs.h>
+#include "RayTracer.h"
+
+#pragma optimize( "", off )
+
+/*
 
 static float randf()
 {
@@ -195,4 +200,137 @@ void RenderTask::SetResolution( int w, int h )
 	render_height = h;
 	camera.width = w;
 	camera.height = h;
+}
+*/
+
+void Raytracer::RaytracePixel( int x, int y, int * pixel )
+{
+	RayInfo ri;
+	ri.Init( x, y, *m_pCamera );
+
+	m_pKDTree->Intersect( ri );
+
+	if( ri.tri ) {
+		float d = dot( ri.n, normalize( float3(1,1,1)));
+		if( d < 0 ) d = 0;
+		pixel[0] = pixel[1] = pixel[2] = int(d * 255.0f);
+	} else {
+		pixel[0] = pixel[1] = pixel[2] = 0;
+	}
+}
+
+static IJobManager * s_pJobManager;
+static IJobFrame * s_pJobFrame;
+
+class RaytraceJob : public IJob
+{
+public:
+	int tile_x,tile_y;
+	int sizePow2_start, sizePow2_end;
+	Raytracer * m_pRaytracer;
+
+	RaytraceJob() : IJob(0) {}
+	virtual void Execute() {
+		int tileSizePow2 = m_pRaytracer->m_ScreenTileSizePow2;
+		int tileSize = 1 << tileSizePow2;
+
+		Image * pImage = m_pRaytracer->m_pImage;
+
+		for( int i=sizePow2_start; i>=sizePow2_end; ++i ) {
+			int step = 1<<i;
+			for( int yi=0; yi<tileSize; yi += step )
+				for( int xi=0; xi<tileSize; xi += step ) {
+					if( (xi & step) || (yi & step) ) {  // only compute pixels, that don't have BOTH coordinates are bigger pow2 - those are already computed
+						int x = tile_x + xi;
+						int y = tile_y + yi;
+						int rgb[3];
+						m_pRaytracer->RaytracePixel( x, y, rgb );
+						pImage->SetPixel( x, y, rgb );
+						if( step ) {
+							if( x - step >= 0 && y - step >= 0 )
+								pImage->BilinearFilterRect( x - step, y - step, step, step );
+							if( x - step >= 0 && y + step < pImage->GetHeight())
+								pImage->BilinearFilterRect( x - step, y,        step, step );
+							if( x + step < pImage->GetWidth() && y - step >= 0 )
+								pImage->BilinearFilterRect( x,        y - step, step, step );
+							if( x + step < pImage->GetWidth() && y + step < pImage->GetHeight())
+								pImage->BilinearFilterRect( x,        y,        step, step );
+						}
+					}
+				}
+		}
+	}
+};
+
+static std::vector<RaytraceJob> jobs;
+
+Raytracer::Raytracer()
+{
+	s_pJobManager = IJobManager::Create();
+	s_pJobManager->Init( 0, 1 );
+	s_pJobFrame = s_pJobManager->CreateJobFrame();
+	m_ScreenTileSizePow2 = 6;
+	m_bPreview = true;
+}
+
+Raytracer::~Raytracer()
+{
+	s_pJobFrame->Stop();
+	delete s_pJobFrame;
+	delete s_pJobManager;
+}
+
+void Raytracer::Stop()
+{
+	s_pJobFrame->Stop();
+}
+
+void Raytracer::Render()
+{
+	s_pJobFrame->Stop();
+
+	int tileSize = 1 << m_ScreenTileSizePow2;
+	int w = m_pImage->GetWidth(), h = m_pImage->GetHeight();
+	if( w % tileSize || h % tileSize ) {
+		w += tileSize - w % tileSize;
+		h += tileSize - h % tileSize;
+		m_pImage->Init( w, h, 24 );
+	}
+	m_pCamera->width = m_pImage->GetWidth();
+	m_pCamera->height = m_pImage->GetHeight();
+	m_pImage->Fill( 0 );
+
+	m_PixelCompleteCount = 0;
+	m_TotalPixelCount = m_pImage->GetWidth() * m_pImage->GetHeight();
+
+	int tw = m_pImage->GetWidth() / tileSize, th = m_pImage->GetHeight() / tileSize;
+
+	jobs.resize( tw*th*2 );
+
+	for( int y=0; y<th; ++y )
+		for( int x=0; x<tw; ++x ) {
+			RaytraceJob j;
+			j.tile_x = x*tileSize;
+			j.tile_y = y*tileSize;
+			j.sizePow2_start = m_ScreenTileSizePow2;
+			j.sizePow2_end = m_ScreenTileSizePow2-1;
+			j.m_pRaytracer = this;
+			jobs[x+y*tw] = j;  // preview + detail raytrace job
+
+			j.sizePow2_start = m_ScreenTileSizePow2-2;
+			j.sizePow2_end = 0;
+			jobs[(x+y*w)*2] = j;
+		}
+	for( size_t i=0; i<jobs.size(); ++i )
+		s_pJobFrame->AddJob( &jobs[i] );
+}
+
+bool Raytracer::IsRendering()
+{
+	return s_pJobManager->IsRunning();
+}
+
+void Raytracer::GetStatus( std::wstring & status )
+{
+
 }

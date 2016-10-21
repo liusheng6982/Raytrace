@@ -2,19 +2,20 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="FileFormats.cpp" />
     <ClCompile Include="KDTree.cpp" />
-    <ClCompile Include="RayTrace.cpp" />
     <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Image.cpp" />
+    <ClCompile Include="RayTracer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RayTrace.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="ObjectFileLoader.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Image.h" />
+    <ClInclude Include="RayTracer.h" />
   </ItemGroup>
 </Project>

@@ -286,3 +286,18 @@ void RayInfo::Init( int x, int y, const Camera & cam )
 	float ky = (y*2.f/cam.height - 1) * tanf( cam.fovy * 3.1415f / 180.0f / 2 );
 	dir = normalize( cam.at + cam.right * kx + cam.up * ky );
 }
+
+bool KDTree::Empty()
+{
+	return m_pRoot == NULL;
+}
+
+void KDTree::GetBBox( float3 & min, float3 & max )
+{
+	if( m_pRoot ) {
+		min = m_pRoot->min;
+		max = m_pRoot->max;
+	} else {
+		min = max = float3(0,0,0);
+	}
+}

@@ -64,6 +64,8 @@ public:
 
 	void Build( IObjectFileLoader * pModel, int maxTrianglesPerNode );
 	void Intersect( RayInfo & ray );
+	bool Empty();
+	void GetBBox( float3 & min, float3 & max );
 
 private:
 	Node * BuildTree( int l, int r );
