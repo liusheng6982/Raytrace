@@ -188,7 +188,6 @@ public:
 		//delete m_pModel;
 		ncCriticalSectionDelete( m_csStatus );
 	}
-
 	virtual void OnKey( int key )
 	{
 		switch( key ) {
@@ -218,7 +217,7 @@ public:
 	virtual void OnDraw()
 	{
 		if( m_Raytracer.IsRendering()) {
-			DrawImage( 0, 0, GetWidth(), GetHeight(), m_Image.GetImageAt(0,0), GetWidth(), GetHeight(), 24 );
+			DrawImage( 0, 0, GetWidth(), GetHeight(), m_Image.GetImageAt(0,0), m_Image.GetWidth(), m_Image.GetHeight(), 24 );
 		}
 	}
 	virtual void OnUpdate()
@@ -235,6 +234,12 @@ public:
 				CenterCamera();
 			}
 		} else {
+			if( m_Raytracer.IsRendering()) {
+				std::wstring str;
+				m_Raytracer.GetStatus( str );
+				SetStatus( str.c_str());
+			} else
+				SetStatus( NULL );
 			Redraw();
 		}
 	}
@@ -262,9 +267,9 @@ public:
 			m_KDTree.GetBBox( min, max );
 
 			float3 center = (min + max) * 0.5f;
-			float L = len( min - center )*2.0f;
+			float L = len( min - center )*0.6f;
 
-			m_Camera.LookAt( center, float3(1,1,-1)*L );
+			m_Camera.LookAt( center, float3(1,1,1)*L );
 		}
 	}
 

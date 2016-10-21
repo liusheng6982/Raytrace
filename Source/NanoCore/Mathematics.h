@@ -82,4 +82,21 @@ struct float3
 	}
 };
 
+struct aabb
+{
+	float3 min, max;
+
+	aabb() {}
+
+	void reset() {
+		min = float3(1000000.0f,1000000.0f,1000000.0f);
+		max = float3(-1000000.0f,-1000000.0f,-1000000.0f);
+	}
+	void operator += ( float3 a ) {
+		if( a.x < min.x ) min.x = a.x; else if( a.x > max.x ) max.x = a.x;
+		if( a.y < min.y ) min.y = a.y; else if( a.y > max.y ) max.y = a.y;
+		if( a.z < min.z ) min.z = a.z; else if( a.z > max.z ) max.z = a.z;
+	}
+};
+
 #endif

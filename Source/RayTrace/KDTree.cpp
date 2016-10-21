@@ -28,6 +28,9 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 
 	const int numTris = pModel->GetNumTriangles();
 
+	aabb bx;
+	bx.reset();
+
 	m_Triangles.resize( numTris );
 	for( int i=0; i<numTris; ++i ) {
 		Triangle & t = m_Triangles[i];
@@ -36,11 +39,15 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 		for( int j=0; j<3; ++j ) {
 			t.pos[j] = *pModel->GetVertexPos( p->pos[j] );
 			t.uv[j] = *pModel->GetVertexUV( p->uv[j] );
+
+			float x = t.pos[j].x;
+
+			bx += t.pos[j];
 		}
 
 		t.n = cross( t.pos[1] - t.pos[0], t.pos[2] - t.pos[0] );
-		if( len( t.n ) < 0.00001f )
-			break;
+		//if( len( t.n ) < 0.00001f )
+		//	break;
 		t.n = normalize( t.n );
 		t.d = -dot( t.n, t.pos[0] );
 
@@ -141,6 +148,8 @@ bool KDTree::Node::IntersectRay( RayInfo & ray )
 
 	//rays_traced++;
 
+#if 1
+
 	if( ray.pos.x < min.x || ray.pos.y < min.y || ray.pos.z < min.z ||
 		ray.pos.x > max.x || ray.pos.y > max.y || ray.pos.z > max.z )
 	{
@@ -167,6 +176,7 @@ bool KDTree::Node::IntersectRay( RayInfo & ray )
 		// already have a hit, that is closer compared to the box intersection
 		if( ray.tri && ray.hitlen < len[axis] ) return false;
 	}
+#endif
 
 	const int count = numTris;
 	const Triangle * ptr = pTris;
@@ -221,7 +231,7 @@ bool KDTree::Node::IntersectRay( RayInfo & ray )
 		float NdotPos = dot( t.n, ray.pos );
 		float NdotDir = dot( t.n, ray.dir );
 
-		if( NdotDir > -0.0001f ) continue;
+		//if( NdotDir > -0.0001f ) continue;
 
 		float k = (-t.d - NdotPos) / NdotDir;
 

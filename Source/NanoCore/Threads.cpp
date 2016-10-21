@@ -49,8 +49,10 @@ bool ncThread::IsRunning()
 
 void ncThread::Terminate()
 {
-	if( m_pImpl->hThread )
+	if( m_pImpl->hThread ) {
 		TerminateThread( m_pImpl->hThread, 0 );
+		m_pImpl->hThread = NULL;
+	}
 }
 
 uint32 ncThread::GetId()

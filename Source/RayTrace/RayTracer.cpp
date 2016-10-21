@@ -236,7 +236,7 @@ public:
 
 		Image * pImage = m_pRaytracer->m_pImage;
 
-		for( int i=sizePow2_start; i>=sizePow2_end; ++i ) {
+		for( int i=sizePow2_start; i>=sizePow2_end; --i ) {
 			int step = 1<<i;
 			for( int yi=0; yi<tileSize; yi += step )
 				for( int xi=0; xi<tileSize; xi += step ) {
@@ -246,7 +246,7 @@ public:
 						int rgb[3];
 						m_pRaytracer->RaytracePixel( x, y, rgb );
 						pImage->SetPixel( x, y, rgb );
-						if( step ) {
+						if( 0 && step ) {
 							if( x - step >= 0 && y - step >= 0 )
 								pImage->BilinearFilterRect( x - step, y - step, step, step );
 							if( x - step >= 0 && y + step < pImage->GetHeight())
@@ -256,6 +256,7 @@ public:
 							if( x + step < pImage->GetWidth() && y + step < pImage->GetHeight())
 								pImage->BilinearFilterRect( x,        y,        step, step );
 						}
+						m_pRaytracer->m_PixelCompleteCount++;
 					}
 				}
 		}
@@ -267,7 +268,7 @@ static std::vector<RaytraceJob> jobs;
 Raytracer::Raytracer()
 {
 	s_pJobManager = IJobManager::Create();
-	s_pJobManager->Init( 0, 1 );
+	s_pJobManager->Init( 1, 1 );
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;
 	m_bPreview = true;
@@ -319,7 +320,7 @@ void Raytracer::Render()
 
 			j.sizePow2_start = m_ScreenTileSizePow2-2;
 			j.sizePow2_end = 0;
-			jobs[(x+y*w)*2] = j;
+			jobs[tw*th + (x+y*tw)] = j;
 		}
 	for( size_t i=0; i<jobs.size(); ++i )
 		s_pJobFrame->AddJob( &jobs[i] );
@@ -332,5 +333,10 @@ bool Raytracer::IsRendering()
 
 void Raytracer::GetStatus( std::wstring & status )
 {
-
+	if( m_PixelCompleteCount < m_TotalPixelCount ) {
+		status += L" | ";
+		wchar_t buf[128];
+		swprintf( buf, L"%d %%", m_PixelCompleteCount * 100 / m_TotalPixelCount );
+		status += buf;
+	}
 }

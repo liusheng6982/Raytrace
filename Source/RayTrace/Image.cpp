@@ -13,7 +13,7 @@ Image::Image( int w, int h, int bpp )
 
 void Image::Init( int w, int h, int bpp )
 {
-	if( bpp != 8 || bpp != 16 || bpp != 24 || bpp != 32 )
+	if( bpp != 8 && bpp != 16 && bpp != 24 && bpp != 32 )
 		return;
 	delete[] m_pBuffer;
 	m_width = w;
