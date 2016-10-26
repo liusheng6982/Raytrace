@@ -9,7 +9,7 @@ public:
 	float fovy;
 	int width, height;
 
-	void LookAt( float3 lookat_pos, float3 at_vec );
+	void LookAt( float3 lookat_pos, float3 at_vec, float3 up_vec );
 	void Orthonormalize();
 	void GetAxes( float3 & _at, float3 & _up, float3 & _right );
 };

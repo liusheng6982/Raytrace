@@ -211,9 +211,11 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 	m_pKDTree->Intersect( ri );
 
 	if( ri.tri ) {
-		float d = dot( ri.n, normalize( float3(1,1,1)));
-		if( d < 0 ) d = 0;
-		pixel[0] = pixel[1] = pixel[2] = int(d * 255.0f);
+		pixel[0] = pixel[1] = pixel[2] = int((ri.n.y*0.5f+0.5f) * 255.0f);
+		/*uint32 c = (uint32)ri.tri;
+		pixel[0] = c&0xFF;
+		pixel[1] = (c>>8)&0xFF;
+		pixel[2] = (c>>16)&0xFF;*/
 	} else {
 		pixel[0] = pixel[1] = pixel[2] = 0;
 	}
@@ -246,7 +248,7 @@ public:
 						int rgb[3];
 						m_pRaytracer->RaytracePixel( x, y, rgb );
 						pImage->SetPixel( x, y, rgb );
-						if( 0 && step ) {
+						if( step && 0 ) {
 							if( x - step >= 0 && y - step >= 0 )
 								pImage->BilinearFilterRect( x - step, y - step, step, step );
 							if( x - step >= 0 && y + step < pImage->GetHeight())
@@ -314,11 +316,11 @@ void Raytracer::Render()
 			j.tile_x = x*tileSize;
 			j.tile_y = y*tileSize;
 			j.sizePow2_start = m_ScreenTileSizePow2;
-			j.sizePow2_end = m_ScreenTileSizePow2-1;
+			j.sizePow2_end = m_ScreenTileSizePow2-3;
 			j.m_pRaytracer = this;
 			jobs[x+y*tw] = j;  // preview + detail raytrace job
 
-			j.sizePow2_start = m_ScreenTileSizePow2-2;
+			j.sizePow2_start = m_ScreenTileSizePow2-4;
 			j.sizePow2_end = 0;
 			jobs[tw*th + (x+y*tw)] = j;
 		}

@@ -153,10 +153,10 @@ JobManager::~JobManager()
 }
 void JobManager::Init( int numThreads, int maxTypes )
 {
-	if( !numThreads ) {
+	if( numThreads <= 0 ) {
 		ncSystemInfo si;
 		ncGetSystemInfo( &si );
-		numThreads = si.ProcessorCount;
+		numThreads = (numThreads == 0) ? si.ProcessorCount-1 : si.ProcessorCount;
 	}
 	for( int i=0; i<numThreads; ++i ) {
 		WorkerThread * p = new WorkerThread( this );

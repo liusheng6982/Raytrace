@@ -13,10 +13,10 @@ void Camera::Orthonormalize() {
 	up = normalize( cross( right, at ));
 }
 
-void Camera::LookAt( float3 lookat_pos, float3 at_vec )
+void Camera::LookAt( float3 lookat_pos, float3 at_vec, float3 up_vec )
 {
 	pos = lookat_pos - at_vec;
 	at = normalize( at_vec );
-	up = float3(0,0,1);
+	up = normalize( up_vec );
 	Orthonormalize();
 }
