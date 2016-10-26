@@ -125,7 +125,7 @@ void Image::BilinearFilterRect( int x, int y, int w, int h )
 			SetPixel( x, yi, p0 );
 			SetPixel( x+w-1, yi, p1 );
 		}
-		for( int xi = 0; xi < w-1; ++xi ) {
+		for( int xi = 1; xi < w-1; ++xi ) {
 			int pix[3];
 			Interpolate( p0, p1, xi*1024/w, pix );
 			SetPixel( x + xi, yi, pix );

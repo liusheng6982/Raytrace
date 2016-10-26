@@ -210,7 +210,7 @@ public:
 	virtual void OnSize( int w, int h )
 	{
 		m_Raytracer.Stop();
-		m_Image.Init( w, h, 24 );
+		m_Image.Init( w/2, h/2, 24 );
 		if( m_pModel->GetNumTriangles())
 			m_Raytracer.Render();
 	}
@@ -267,9 +267,9 @@ public:
 			m_KDTree.GetBBox( min, max );
 
 			float3 center = (min + max) * 0.5f;
-			float L = len( min - center )*0.6f;
+			float L = len( min - center )*0.3f;
 
-			m_Camera.LookAt( center, float3(1,1,1)*L );
+			m_Camera.LookAt( center, float3(1,0,-1)*L, float3(0,1,0) );
 		}
 	}
 
