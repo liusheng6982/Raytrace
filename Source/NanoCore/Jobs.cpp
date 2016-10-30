@@ -206,6 +206,10 @@ void JobManager::PrintStats( IJobFrame * p )
 }
 void JobFrame::Stop()
 {
+	for( size_t i=0; i<m_pJobManager->m_threads.size(); ++i ) {
+		m_pJobManager->m_threads[i]->Terminate();
+	}
+
 	for( int i=0; i<m_maxTypes; ++i ) {
 		m_pJobTypes[i].dependant_jobs.clear();
 		m_pJobTypes[i].count = 0;
@@ -216,7 +220,6 @@ void JobFrame::Stop()
 	ncCriticalSectionLeave( m_pJobManager->m_csAvailable );
 
 	for( size_t i=0; i<m_pJobManager->m_threads.size(); ++i ) {
-		m_pJobManager->m_threads[i]->Terminate();
 		m_pJobManager->m_threads[i]->Start( NULL );
 	}
 }

@@ -8,6 +8,9 @@ public:
 	virtual ~IObjectFileLoader() {}
 
 	virtual bool Load( const wchar_t * pwFilename ) = 0;
+
+	virtual const wchar_t * GetFilename() const = 0;
+
 	virtual int  GetLoadingProgress() = 0;
 
 	struct Triangle {

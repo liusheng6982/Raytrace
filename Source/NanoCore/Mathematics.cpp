@@ -10,3 +10,19 @@ float ncTan( float x )
 {
 	return tanf( x );
 }
+
+float ncSin( float x )
+{
+	return sinf( x );
+}
+
+float ncCos( float x )
+{
+	return cosf( x );
+}
+
+void  ncSinCos( float x, float & s, float & c )
+{
+	s = sinf( x );
+	c = cosf( x );
+}

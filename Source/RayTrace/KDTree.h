@@ -52,11 +52,9 @@ class KDTree
 public:
 	struct Node {
 		float3 min, max;
-		int numTris, axis;
-		const Triangle * pTris;
-		Node *left, *right;
-
-		bool IntersectRay( RayInfo & ray );
+		int axis;
+		int startTriangle, numTriangles;
+		int left, right;
 	};
 
 	KDTree();
@@ -68,11 +66,11 @@ public:
 	void GetBBox( float3 & min, float3 & max );
 
 private:
-	Node * BuildTree( int l, int r );
+	int BuildTree( int l, int r );
+	void Intersect_r( int node, RayInfo & ray );
 
-	Node * m_pRoot;
 	std::vector<Triangle> m_Triangles;
-	int m_numNodes;
+	std::vector<Node> m_Tree;
 	int m_maxTrianglesPerNode;
 };
 

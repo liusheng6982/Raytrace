@@ -13,10 +13,26 @@ void Camera::Orthonormalize() {
 	up = normalize( cross( right, at ));
 }
 
-void Camera::LookAt( float3 lookat_pos, float3 at_vec, float3 up_vec )
+void Camera::LookAt( float3 lookat_pos, float3 at_vec )
 {
 	pos = lookat_pos - at_vec;
 	at = normalize( at_vec );
-	up = normalize( up_vec );
+	up = normalize( world_up );
 	Orthonormalize();
+}
+
+void Camera::Rotate( float pitch, float yaw )
+{
+	matrix m1, m2, m;
+	m1.setRotationAxis( world_up, yaw );
+
+	float3 nr = m1 * right;
+
+	m2.setRotationAxis( nr, pitch );
+
+	m = m2 * m1;
+
+	at = m * at;
+	right = m * right;
+	up = m * up;
 }

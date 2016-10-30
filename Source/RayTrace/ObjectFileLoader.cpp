@@ -20,7 +20,12 @@ public:
 		EraseContainer( m_Triangles );
 	}
 
+	virtual const wchar_t * GetFilename() const {
+		return m_wFilename.c_str();
+	}
+
 	virtual bool Load( const wchar_t * pwFilename );
+
 	virtual int  GetLoadingProgress() {
 		return m_Progress;
 	}
@@ -36,6 +41,8 @@ public:
 	virtual int GetNumTriangles() {
 		return m_TriangleCount;
 	}
+
+	void Save( const wchar_t * pwFilename );
 
 	template< typename T > void AddElement( T & el, vector<T*> & container, int & count ) {
 		if( count % BUCKET_SIZE == 0 )
@@ -53,6 +60,7 @@ public:
 	vector<float2*> m_UVs;
 	vector<Triangle*> m_Triangles;
 	int m_PositionCount, m_UVCount, m_TriangleCount;
+	wstring m_wFilename;
 
 	mutable int m_Progress;
 };
@@ -108,11 +116,41 @@ struct TextFileReadStream
 
 bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 {
+	m_Progress = 0;
+	m_wFilename = pwFilename;
+
+	wstring wFilenameCached( pwFilename );
+	wFilenameCached += L".cached";
+
+	FILE * fp = _wfopen( wFilenameCached.c_str(), L"rb" );
+	if( fp ) {
+		fread( &m_PositionCount, sizeof(m_PositionCount), 1, fp );
+		fread( &m_UVCount, sizeof(m_UVCount), 1, fp );
+		fread( &m_TriangleCount, sizeof(m_TriangleCount), 1, fp );
+
+		EraseContainer( m_Positions );
+		for( int count = m_PositionCount; count > 0; count -= BUCKET_SIZE ) {
+			m_Positions.push_back( new float3[BUCKET_SIZE] );
+			fread( m_Positions.back(), min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
+		}
+		EraseContainer( m_UVs );
+		for( int count = m_UVCount; count > 0; count -= BUCKET_SIZE ) {
+			m_UVs.push_back( new float2[BUCKET_SIZE] );
+			fread( m_UVs.back(), min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
+		}
+		EraseContainer( m_Triangles );
+		for( int count = m_TriangleCount; count > 0; count -= BUCKET_SIZE ) {
+			m_Triangles.push_back( new Triangle[BUCKET_SIZE] );
+			fread( m_Triangles.back(), min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
+		}
+		fclose( fp );
+		return true;
+	}
+
 	TextFileReadStream f( pwFilename );
 	if( !f.Exist())
 		return false;
 
-	m_Progress = 0;
 	m_PositionCount = m_UVCount = m_TriangleCount = 0;
 
 	char line[1024];
@@ -137,8 +175,15 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 				char * p = line+2;
 				for( int i=0; p; ) {
 					sscanf( p, "%d/%d", f.pos + i, f.uv + i );
-					f.pos[i]--;
-					f.uv[i]--;
+					if( f.pos[i] > 0 )
+						f.pos[i]--;
+					else
+						f.pos[i] = m_PositionCount + f.pos[i];
+
+					if( f.uv[i] > 0 )
+						f.uv[i]--;
+					else
+						f.uv[i] = m_UVCount + f.uv[i];
 
 					if( f.pos[i] >= m_PositionCount )
 						break;
@@ -160,10 +205,33 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 				break;
 			}
 		}
-		m_Progress = f.GetOffset() * 100 / f.GetSize();
+		m_Progress = int( int64(f.GetOffset()) * 100 / int64(f.GetSize()));
 	}
 	m_Progress = 100;
+	Save( wFilenameCached.c_str());
 	return true;
+}
+
+void ObjectFileLoader::Save( const wchar_t * pwFilename )
+{
+	FILE * fp = _wfopen( pwFilename, L"wb" );
+	if( !fp )
+		return;
+
+	fwrite( &m_PositionCount, sizeof(m_PositionCount), 1, fp );
+	fwrite( &m_UVCount, sizeof(m_UVCount), 1, fp );
+	fwrite( &m_TriangleCount, sizeof(m_TriangleCount), 1, fp );
+
+	for( int i=0, count = m_PositionCount; count > 0; ++i, count -= BUCKET_SIZE ) {
+		fwrite( m_Positions[i], min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
+	}
+	for( int i=0, count = m_UVCount; count > 0; ++i, count -= BUCKET_SIZE ) {
+		fwrite( m_UVs[i], min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
+	}
+	for( int i=0, count = m_TriangleCount; count > 0; ++i, count -= BUCKET_SIZE ) {
+		fwrite( m_Triangles[i], min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
+	}
+	fclose( fp );
 }
 
 IObjectFileLoader * IObjectFileLoader::Create()

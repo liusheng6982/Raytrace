@@ -1,30 +1,47 @@
 #include "KDTree.h"
+#include <string>
+
+using namespace std;
 
 #define EPSILON 0.000001
 
-static void DeleteKDTreeNode( KDTree::Node * p )
-{
-	if( p ) {
-		DeleteKDTreeNode( p->left );
-		DeleteKDTreeNode( p->right );
-		delete p;
-	}
-}
+
+
 
 KDTree::KDTree()
 {
-	m_pRoot = NULL;
-	m_numNodes = 0;
 }
 
 KDTree::~KDTree()
 {
-	DeleteKDTreeNode( m_pRoot );
 }
 
 void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 {
-	DeleteKDTreeNode( m_pRoot );
+	m_Tree.clear();
+
+	wstring wFile = pModel->GetFilename();
+	wFile += L".kdtree";
+
+	FILE * fp = _wfopen( wFile.c_str(), L"rb" );
+	if( fp ) {
+		int numTris, numNodes;
+		fread( &numTris, sizeof(numTris), 1, fp );
+		fread( &numNodes, sizeof(numNodes), 1, fp );
+		fread( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode), 1, fp );
+
+		if( m_maxTrianglesPerNode == maxTrianglesPerNode ) {
+			m_Triangles.resize( numTris );
+			m_Tree.resize( numNodes );
+			for( int i=0; i<numTris; ++i )
+				fread( &m_Triangles[i], sizeof(Triangle), 1, fp );
+			for( int i=0; i<numNodes; ++i )
+				fread( &m_Tree[i], sizeof(Node), 1, fp );
+			fclose( fp );
+			return;
+		}
+		fclose( fp );
+	}
 
 	const int numTris = pModel->GetNumTriangles();
 
@@ -61,16 +78,27 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 #endif
 	}
 	m_maxTrianglesPerNode = maxTrianglesPerNode;
-	m_numNodes = 0;
-	m_pRoot = BuildTree( 0, numTris );
+	BuildTree( 0, numTris );
+
+	fp = _wfopen( wFile.c_str(), L"wb" );
+	if( fp ) {
+		int numTris = m_Triangles.size();
+		int numNodes = m_Tree.size();
+		fwrite( &numTris, sizeof(numTris), 1, fp );
+		fwrite( &numNodes, sizeof(numNodes), 1, fp );
+		fwrite( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode), 1, fp );
+		for( int i=0; i<numTris; ++i )
+			fwrite( &m_Triangles[i], sizeof(Triangle), 1, fp );
+		for( int i=0; i<numNodes; ++i )
+			fwrite( &m_Tree[i], sizeof(Node), 1, fp );
+		fclose( fp );
+	}
 }
 
-KDTree::Node * KDTree::BuildTree( int l, int r )
+int KDTree::BuildTree( int l, int r )
 {
 	if( l >= r )
 		return 0;
-
-	m_numNodes++;
 
 	float3 min = m_Triangles[l].pos[0], max = m_Triangles[l].pos[0];
 	for( int i=l; i<r; ++i ) {
@@ -127,34 +155,35 @@ KDTree::Node * KDTree::BuildTree( int l, int r )
 		}
 	}
 
-	Node * node = new Node();
-	node->min = min;
-	node->max = max;
-	node->axis = axis;
-	node->numTris = l1-l;
-	node->pTris = &m_Triangles[l];
+	int node = m_Tree.size();
+	m_Tree.push_back(Node());
 
-	node->left = BuildTree( l1, l2+1 );
-	node->right = BuildTree( l2+1, r );
+	int left_node = BuildTree(l1, l2+1);
+	int right_node = BuildTree(l2+1, r);
 
+	m_Tree[node].min = min;
+	m_Tree[node].max = max;
+	m_Tree[node].axis = axis;
+	m_Tree[node].startTriangle = l;
+	m_Tree[node].numTriangles = l1-l;
+	m_Tree[node].left = left_node;
+	m_Tree[node].right = right_node;
 	return node;
 }
 
 int64 rays_traced = 0;
 
-bool KDTree::Node::IntersectRay( RayInfo & ray )
+void KDTree::Intersect_r( int node_index, RayInfo & ray )
 {
-	// intersect ray with node's box
-
-	//rays_traced++;
+	const Node & node = m_Tree[node_index];
 
 #if 1
 
-	if( ray.pos.x < min.x || ray.pos.y < min.y || ray.pos.z < min.z ||
-		ray.pos.x > max.x || ray.pos.y > max.y || ray.pos.z > max.z )
+	if( ray.pos.x < node.min.x || ray.pos.y < node.min.y || ray.pos.z < node.min.z ||
+		ray.pos.x > node.max.x || ray.pos.y > node.max.y || ray.pos.z > node.max.z )
 	{
 		float3 dir = ray.dir;
-		float3 bs( dir.x > 0 ? min.x : max.x, dir.y > 0 ? min.y : max.y, dir.z > 0 ? min.z : max.z );
+		float3 bs( dir.x > 0 ? node.min.x : node.max.x, dir.y > 0 ? node.min.y : node.max.y, dir.z > 0 ? node.min.z : node.max.z );
 		float3 len = bs - ray.pos;
 
 		for( int i=0; i<3; ++i )
@@ -164,22 +193,22 @@ bool KDTree::Node::IntersectRay( RayInfo & ray )
 		if( len.y > len.x ) axis = 1;
 		if( len.z > len[axis] ) axis = 2;
 
-		if( len[axis] <= 0 ) return false;
+		if( len[axis] <= 0 ) return;
 
 		float3 i = ray.pos + dir * len[axis];
 		switch( axis ) {
-			case 0: if( i.y < min.y || i.y > max.y || i.z < min.z || i.z > max.z ) return false; break;
-			case 1: if( i.z < min.z || i.z > max.z || i.x < min.x || i.x > max.x ) return false; break;
-			case 2: if( i.x < min.x || i.x > max.x || i.y < min.y || i.y > max.y ) return false; break;
+			case 0: if( i.y < node.min.y || i.y > node.max.y || i.z < node.min.z || i.z > node.max.z ) return; break;
+			case 1: if( i.z < node.min.z || i.z > node.max.z || i.x < node.min.x || i.x > node.max.x ) return; break;
+			case 2: if( i.x < node.min.x || i.x > node.max.x || i.y < node.min.y || i.y > node.max.y ) return; break;
 		}
 
 		// already have a hit, that is closer compared to the box intersection
-		if( ray.tri && ray.hitlen < len[axis] ) return false;
+		if( ray.tri && ray.hitlen < len[axis] ) return;
 	}
 #endif
 
-	const int count = numTris;
-	const Triangle * ptr = pTris;
+	const int count = node.numTriangles;
+	const Triangle * ptr = &m_Triangles[0] + node.startTriangle;
 	for( int i=0; i<count; ++i ) {
 		const Triangle & t = ptr[i];
 
@@ -274,17 +303,17 @@ bool KDTree::Node::IntersectRay( RayInfo & ray )
 		}
 #endif
 	}
-	if( left ) left->IntersectRay( ray );
-	if( right ) right->IntersectRay( ray );
-
-	return ray.tri != 0;
+	if( node.left )
+		Intersect_r( node.left, ray );
+	if( node.right )
+		Intersect_r( node.right, ray );
 }
 
 void KDTree::Intersect( RayInfo & ray )
 {
 	ray.Clear();
-	if( m_pRoot )
-		m_pRoot->IntersectRay( ray );
+	if( !m_Tree.empty())
+		Intersect_r( 0, ray );
 }
 
 void RayInfo::Init( int x, int y, const Camera & cam )
@@ -292,21 +321,21 @@ void RayInfo::Init( int x, int y, const Camera & cam )
 	pos = cam.pos;
 	hitlen = 1000000000.f;
 	tri = 0;
-	float kx = (x*2.f/cam.width - 1) * tanf( cam.fovy * 3.1415f / 180.0f / 2 ) * float(cam.width) / cam.height;
-	float ky = (y*2.f/cam.height - 1) * tanf( cam.fovy * 3.1415f / 180.0f / 2 );
+	float kx = (x*2.f/cam.width - 1) * tanf( cam.fovy * 0.5f ) * float(cam.width) / cam.height;
+	float ky = (y*2.f/cam.height - 1) * tanf( cam.fovy * 0.5f );
 	dir = normalize( cam.at + cam.right * kx + cam.up * ky );
 }
 
 bool KDTree::Empty()
 {
-	return m_pRoot == NULL;
+	return m_Tree.empty();
 }
 
 void KDTree::GetBBox( float3 & min, float3 & max )
 {
-	if( m_pRoot ) {
-		min = m_pRoot->min;
-		max = m_pRoot->max;
+	if( !Empty() ) {
+		min = m_Tree[0].min;
+		max = m_Tree[0].max;
 	} else {
 		min = max = float3(0,0,0);
 	}

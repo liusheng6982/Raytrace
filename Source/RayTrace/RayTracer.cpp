@@ -1,8 +1,6 @@
 #include <NanoCore/Jobs.h>
 #include "RayTracer.h"
 
-#pragma optimize( "", off )
-
 /*
 
 static float randf()
@@ -211,7 +209,20 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 	m_pKDTree->Intersect( ri );
 
 	if( ri.tri ) {
-		pixel[0] = pixel[1] = pixel[2] = int((ri.n.y*0.5f+0.5f) * 255.0f);
+
+		RayInfo rSun;
+		rSun.pos = ri.GetHit() + ri.n*0.01f;
+		rSun.dir = normalize( float3(1,8,1));
+		rSun.tri = NULL;
+		rSun.hitlen = 10000000.0f;
+		m_pKDTree->Intersect( rSun );
+
+		float shade = rSun.tri ? 30.0f : 255.0f;
+		pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
+		pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
+		pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
+
+
 		/*uint32 c = (uint32)ri.tri;
 		pixel[0] = c&0xFF;
 		pixel[1] = (c>>8)&0xFF;
@@ -270,7 +281,7 @@ static std::vector<RaytraceJob> jobs;
 Raytracer::Raytracer()
 {
 	s_pJobManager = IJobManager::Create();
-	s_pJobManager->Init( 1, 1 );
+	s_pJobManager->Init( 0, 1 );
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;
 	m_bPreview = true;
