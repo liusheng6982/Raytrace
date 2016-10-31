@@ -215,9 +215,8 @@ void JobFrame::Stop()
 		m_pJobTypes[i].count = 0;
 	}
 
-	ncCriticalSectionEnter( m_pJobManager->m_csAvailable );
-	m_pJobManager->m_available.clear();
 	ncCriticalSectionLeave( m_pJobManager->m_csAvailable );
+	m_pJobManager->m_available.clear();
 
 	for( size_t i=0; i<m_pJobManager->m_threads.size(); ++i ) {
 		m_pJobManager->m_threads[i]->Start( NULL );

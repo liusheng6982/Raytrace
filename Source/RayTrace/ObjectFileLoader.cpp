@@ -8,7 +8,7 @@ using namespace std;
 
 #pragma warning( disable : 4996 )
 
-
+#pragma optimize( "", off )
 
 class ObjectFileLoader : public IObjectFileLoader
 {
@@ -113,7 +113,6 @@ struct TextFileReadStream
 	}
 };
 
-
 bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 {
 	m_Progress = 0;
@@ -173,21 +172,34 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 			case 'f': {
 				Triangle f;
 				char * p = line+2;
+
+				bool bTexCoords = strchr( p, '/' ) != NULL;
+
 				for( int i=0; p; ) {
-					sscanf( p, "%d/%d", f.pos + i, f.uv + i );
+
+					if( bTexCoords ) {
+						if( sscanf( p, "%d/%d", f.pos + i, f.uv + i ) != 2 )
+							break;
+					} else {
+						if( sscanf( p, "%d", f.pos + i ) != 1 )
+							break;
+					}
+
 					if( f.pos[i] > 0 )
 						f.pos[i]--;
 					else
 						f.pos[i] = m_PositionCount + f.pos[i];
 
-					if( f.uv[i] > 0 )
-						f.uv[i]--;
-					else
-						f.uv[i] = m_UVCount + f.uv[i];
+					if( bTexCoords ) {
+						if( f.uv[i] > 0 )
+							f.uv[i]--;
+						else
+							f.uv[i] = m_UVCount + f.uv[i];
+					}
 
 					if( f.pos[i] >= m_PositionCount )
 						break;
-					if( f.uv[i] >= m_UVCount )
+					if( bTexCoords && f.uv[i] >= m_UVCount )
 						f.uv[i] = 0;
 
 					// add a face per each vertex after first 2 - create a fan of triangles
@@ -199,7 +211,8 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 						i++;
 
 					p = strchr( p+1, ' ' );
-					if( !p || !strchr( p, '/' ))
+					//if( !p || !strchr( p, '/' ))
+					if( !p )
 						break;
 				}
 				break;

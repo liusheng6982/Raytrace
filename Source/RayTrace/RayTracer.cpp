@@ -217,11 +217,11 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 		rSun.hitlen = 10000000.0f;
 		m_pKDTree->Intersect( rSun );
 
-		float shade = rSun.tri ? 30.0f : 255.0f;
+		float shade = rSun.tri ? 50.0f : 255.0f;
+
 		pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
 		pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
 		pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
-
 
 		/*uint32 c = (uint32)ri.tri;
 		pixel[0] = c&0xFF;
@@ -249,11 +249,14 @@ public:
 
 		Image * pImage = m_pRaytracer->m_pImage;
 
+		bool bZeroPixel = tileSizePow2 == sizePow2_start;
+
 		for( int i=sizePow2_start; i>=sizePow2_end; --i ) {
 			int step = 1<<i;
 			for( int yi=0; yi<tileSize; yi += step )
 				for( int xi=0; xi<tileSize; xi += step ) {
-					if( (xi & step) || (yi & step) ) {  // only compute pixels, that don't have BOTH coordinates are bigger pow2 - those are already computed
+					if( (xi & step) || (yi & step) || bZeroPixel ) {  // only compute pixels, that don't have BOTH coordinates are bigger pow2 - those are already computed
+						bZeroPixel = false;
 						int x = tile_x + xi;
 						int y = tile_y + yi;
 						int rgb[3];

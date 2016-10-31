@@ -55,7 +55,8 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 
 		for( int j=0; j<3; ++j ) {
 			t.pos[j] = *pModel->GetVertexPos( p->pos[j] );
-			t.uv[j] = *pModel->GetVertexUV( p->uv[j] );
+			const float2 * pUV = pModel->GetVertexUV( p->uv[j] );
+			if( pUV ) t.uv[j] = *pUV;
 
 			float x = t.pos[j].x;
 

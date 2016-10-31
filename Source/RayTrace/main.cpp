@@ -149,6 +149,16 @@ public:
 			Redraw();
 		}
 	}
+	virtual void OnMenu( int id )
+	{
+		switch( id ) {
+			case 1000:
+				LoadModel();
+				break;
+			case 1001:
+				break;
+		}
+	}
 	void LoadModel() {
 		std::wstring wFolder = ncGetCurrentFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
@@ -197,6 +207,13 @@ int Main()
 	MainWnd * pWnd = new MainWnd();
 	pWnd->Init( 800, 600 );
 	pWnd->SetStatus( NULL );
+
+	int mainMenu = pWnd->CreateMenu();
+	int fileMenu = pWnd->CreateMenu();
+
+	pWnd->AddMenuItem( mainMenu, L"File", true, fileMenu );
+	pWnd->AddMenuItem( fileMenu, L"Open", false, 1000 );
+	pWnd->AddMenuItem( fileMenu, L"Exit", false, 1001 );
 
 	while( pWnd->Update()) {
 		ncSleep( 10 );

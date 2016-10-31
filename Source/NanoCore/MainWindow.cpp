@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <tchar.h>
+#include <vector>
 #include "MainWindow.h"
 
 
@@ -63,6 +64,11 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 			s_pMainWindow->OnSize( s_Width, s_Height );
 			break;
 		}
+		case WM_COMMAND:
+			if( HIWORD(wParam) == 0 ) {
+				s_pMainWindow->OnMenu( LOWORD(wParam) );
+				break;
+			}
 		case WM_DESTROY: {
 			s_bQuit = true;
 			PostQuitMessage(0);
@@ -181,5 +187,30 @@ void ncMainWindow::DrawText( int x, int y, const char * pcText )
 {
 	if( !s_hDrawDC )
 		return;
-	TextOutA( s_hDrawDC, x, y, pcText, strlen(pcText) );
+	TextOutA( s_hDrawDC, x, y, pcText, (int)strlen(pcText) );
+}
+
+static std::vector<HMENU> s_Menus;
+
+int ncMainWindow::CreateMenu()
+{
+	s_Menus.push_back( ::CreateMenu() );
+	if( s_Menus.size() == 1 ) {
+		::SetMenu( s_hWnd, s_Menus[0] );
+	}
+	return int(s_Menus.size()-1);
+}
+
+void ncMainWindow::AddMenuItem( int menu, const wchar_t * pcName, bool bSubmenu, int id )
+{
+	if( menu<0 || menu >= s_Menus.size())
+		return;
+	if( bSubmenu && ( id < 0 || id >= s_Menus.size()))
+		return;
+
+	UINT flags = MF_STRING;
+	if( bSubmenu ) flags |= MF_POPUP;
+
+	::AppendMenu( s_Menus[menu], flags, bSubmenu ? (UINT_PTR)s_Menus[id] : (UINT_PTR)id, pcName );
+	::DrawMenuBar( s_hWnd );
 }
