@@ -3,6 +3,8 @@
 #include <vector>
 #include <deque>
 
+namespace NanoCore {
+
 using namespace std;
 class JobManager;
 
@@ -29,20 +31,20 @@ public:
 	struct JobType {
 		int count;
 		vector<IJob*> dependant_jobs;
-		ncCriticalSection * cs;
+		CriticalSection * cs;
 
 		JobType():count(0){
-			cs = ncCriticalSectionCreate();
+			cs = CriticalSectionCreate();
 		}
 		~JobType() {
-			ncCriticalSectionDelete( cs );
+			CriticalSectionDelete( cs );
 		}
 	};
 	JobType * m_pJobTypes;
 	int       m_maxTypes;
 };
 
-class WorkerThread : public ncThread
+class WorkerThread : public Thread
 {
 public:
 	WorkerThread( JobManager * pJobManager ):m_pActiveJob(NULL), m_pJobManager(pJobManager) {}
@@ -71,7 +73,7 @@ public:
 
 	mutable int m_jobsCount;
 
-	ncCriticalSection   * m_csAvailable;
+	CriticalSection   * m_csAvailable;
 	deque<IJob*>          m_available;
 	vector<WorkerThread*> m_threads;
 	int                   m_maxTypes;
@@ -92,13 +94,13 @@ void JobFrame::AddJob( IJob * pJob, int typeToWait )
 
 	JobType * pJobType = m_pJobTypes + pJob->GetType();
 
-	//ncCriticalSectionScope cs( pJobType->cs );
+	//CriticalSectionScope cs( pJobType->cs );
 	pJobType->count++;
 
 	if( typeToWait == -1 ) {
 		m_pJobManager->AddJob( pJob );
 	} else {
-		ncCriticalSectionScope cs( m_pJobTypes[typeToWait].cs );
+		CriticalSectionScope cs( m_pJobTypes[typeToWait].cs );
 		m_pJobTypes[typeToWait].dependant_jobs.push_back( pJob );
 		m_jobsCount++;
 	}
@@ -109,11 +111,11 @@ IJobManager * IJobManager::Create()
 }
 void WorkerThread::Run( void* )
 {
-	ncDebugOutput( "Worker thread %X started.\n", this );
+	DebugOutput( "Worker thread %X started.\n", this );
 	for( ;; ) {
 		IJob * pJob = m_pJobManager->GetJob();
 		if( !pJob ) {
-			ncSleep( 1 );
+			Sleep( 1 );
 			continue;
 		}
 
@@ -126,7 +128,7 @@ void WorkerThread::Run( void* )
 		JobFrame::JobType * ptr = &frame->m_pJobTypes[type];
 
 		{
-			ncCriticalSectionScope cs( ptr->cs );
+			CriticalSectionScope cs( ptr->cs );
 			if( --ptr->count == 0 ) {
 				const int jc = ptr->dependant_jobs.size();
 				if( jc ) {
@@ -136,26 +138,26 @@ void WorkerThread::Run( void* )
 				}
 			}
 		}
-		ncCriticalSectionScope cs( m_pJobManager->m_csAvailable );
+		CriticalSectionScope cs( m_pJobManager->m_csAvailable );
 		m_pJobManager->m_jobsCount--;
 	}
 }
 JobManager::JobManager()
 {
 	m_jobsCount = 0;
-	m_csAvailable = ncCriticalSectionCreate();
+	m_csAvailable = CriticalSectionCreate();
 }
 JobManager::~JobManager()
 {
-	ncCriticalSectionDelete( m_csAvailable );
+	CriticalSectionDelete( m_csAvailable );
 	for( size_t i=0; i<m_threads.size(); ++i )
 		delete m_threads[i];
 }
 void JobManager::Init( int numThreads, int maxTypes )
 {
 	if( numThreads <= 0 ) {
-		ncSystemInfo si;
-		ncGetSystemInfo( &si );
+		SystemInfo si;
+		GetSystemInfo( &si );
 		numThreads = (numThreads == 0) ? si.ProcessorCount-1 : si.ProcessorCount;
 	}
 	for( int i=0; i<numThreads; ++i ) {
@@ -175,20 +177,20 @@ bool JobManager::IsRunning()
 }
 void JobManager::AddJob( IJob * p )
 {
-	ncCriticalSectionScope cs( m_csAvailable ); 
+	CriticalSectionScope cs( m_csAvailable ); 
 	m_available.push_back( p );
 	m_jobsCount++;
 }
 void JobManager::AddJobs( IJob ** p, int count )
 {
-	ncCriticalSectionScope cs( m_csAvailable );
+	CriticalSectionScope cs( m_csAvailable );
 	for( int i=0; i<count; ++i )
 		m_available.push_back( p[i] );
 	m_jobsCount += count;
 }
 IJob * JobManager::GetJob()
 {
-	ncCriticalSectionScope cs( m_csAvailable );
+	CriticalSectionScope cs( m_csAvailable );
 	if( m_available.empty())
 		return NULL;
 	IJob * p = m_available.front();
@@ -197,12 +199,12 @@ IJob * JobManager::GetJob()
 }
 void JobManager::PrintStats( IJobFrame * p )
 {
-	ncDebugOutput( "Job manager CS wait: %ld us\n", ncTickToMicroseconds( ncCriticalSectionGetWaitTicks( m_csAvailable )));
+	DebugOutput( "Job manager CS wait: %ld us\n", TickToMicroseconds( CriticalSectionGetWaitTicks( m_csAvailable )));
 	JobFrame * jf = (JobFrame*)p;
 	uint64 u = 0;
 	for( int i=0; i<jf->m_maxTypes; ++i )
-		u += ncCriticalSectionGetWaitTicks( jf->m_pJobTypes[i].cs );
-	ncDebugOutput( "Job frame CS wait: %ld us\n", u );
+		u += CriticalSectionGetWaitTicks( jf->m_pJobTypes[i].cs );
+	DebugOutput( "Job frame CS wait: %ld us\n", u );
 }
 void JobFrame::Stop()
 {
@@ -215,10 +217,12 @@ void JobFrame::Stop()
 		m_pJobTypes[i].count = 0;
 	}
 
-	ncCriticalSectionLeave( m_pJobManager->m_csAvailable );
+	CriticalSectionLeave( m_pJobManager->m_csAvailable );
 	m_pJobManager->m_available.clear();
 
 	for( size_t i=0; i<m_pJobManager->m_threads.size(); ++i ) {
 		m_pJobManager->m_threads[i]->Start( NULL );
 	}
+}
+
 }

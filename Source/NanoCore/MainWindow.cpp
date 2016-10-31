@@ -9,13 +9,13 @@ extern int Main();
 
 
 
-static TCHAR szWindowClass[] = _T("ncMainWindow");
+static TCHAR szWindowClass[] = _T("MainWindow");
 
 static HINSTANCE s_hInstance;
 static HWND s_hWnd;
 static HDC  s_hDrawDC;
 static int s_CmdShow;
-static ncMainWindow * s_pMainWindow;
+static NanoCore::MainWindow * s_pMainWindow;
 static bool s_bQuit;
 static int s_Width, s_Height, s_MouseX, s_MouseY;
 
@@ -86,17 +86,19 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 	return 0;
 }
 
-ncMainWindow::ncMainWindow()
+namespace NanoCore {
+
+MainWindow::MainWindow()
 {
 	s_pMainWindow = this;
 	s_bQuit = false;
 }
-ncMainWindow::~ncMainWindow()
+MainWindow::~MainWindow()
 {
 	s_pMainWindow = NULL;
 }
 
-bool ncMainWindow::Init( int w, int h )
+bool MainWindow::Init( int w, int h )
 {
 	WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, WndProc, 0, 0, s_hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, szWindowClass, 0 };
 	wcex.hIcon          = LoadIcon( s_hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
@@ -116,7 +118,7 @@ bool ncMainWindow::Init( int w, int h )
 	return true;
 }
 
-bool ncMainWindow::Update()
+bool MainWindow::Update()
 {
 	MSG msg;
 	while( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE )) {
@@ -127,33 +129,33 @@ bool ncMainWindow::Update()
 	return !s_bQuit;
 }
 
-void ncMainWindow::SetCaption( const wchar_t * pwCaption )
+void MainWindow::SetCaption( const wchar_t * pwCaption )
 {
 	SetWindowText( s_hWnd, pwCaption );
 }
 
-void ncMainWindow::Redraw()
+void MainWindow::Redraw()
 {
 	InvalidateRect( s_hWnd, NULL, TRUE );
 	UpdateWindow( s_hWnd );
 }
 
-void ncMainWindow::Exit()
+void MainWindow::Exit()
 {
 	::PostQuitMessage( 0 );
 }
 
-int ncMainWindow::GetWidth()
+int MainWindow::GetWidth()
 {
 	return s_Width;
 }
 
-int ncMainWindow::GetHeight()
+int MainWindow::GetHeight()
 {
 	return s_Height;
 }
 
-std::wstring ncMainWindow::ChooseFile( const wchar_t * pwFolder, const wchar_t * pwFilter, const wchar_t * pwCaption, bool bLoad )
+std::wstring MainWindow::ChooseFile( const wchar_t * pwFolder, const wchar_t * pwFilter, const wchar_t * pwCaption, bool bLoad )
 {
 	wchar_t wBuffer[1024] = {0};
 
@@ -174,7 +176,7 @@ std::wstring ncMainWindow::ChooseFile( const wchar_t * pwFolder, const wchar_t *
 	return std::wstring(wBuffer);
 }
 
-void ncMainWindow::DrawImage( int x, int y, int w, int h, const uint8 * pImage, int iw, int ih, int bpp )
+void MainWindow::DrawImage( int x, int y, int w, int h, const uint8 * pImage, int iw, int ih, int bpp )
 {
 	if( !s_hDrawDC )
 		return;
@@ -184,7 +186,7 @@ void ncMainWindow::DrawImage( int x, int y, int w, int h, const uint8 * pImage, 
 	int ret = StretchDIBits( s_hDrawDC, x, y, w, h, 0, 0, iw, ih, pImage, &bmp, DIB_RGB_COLORS, SRCCOPY );
 }
 
-void ncMainWindow::DrawText( int x, int y, const char * pcText )
+void MainWindow::DrawText( int x, int y, const char * pcText )
 {
 	if( !s_hDrawDC )
 		return;
@@ -193,7 +195,7 @@ void ncMainWindow::DrawText( int x, int y, const char * pcText )
 
 static std::vector<HMENU> s_Menus;
 
-int ncMainWindow::CreateMenu()
+int MainWindow::CreateMenu()
 {
 	s_Menus.push_back( ::CreateMenu() );
 	if( s_Menus.size() == 1 ) {
@@ -202,7 +204,7 @@ int ncMainWindow::CreateMenu()
 	return int(s_Menus.size()-1);
 }
 
-void ncMainWindow::AddMenuItem( int menu, const wchar_t * pcName, int id )
+void MainWindow::AddMenuItem( int menu, const wchar_t * pcName, int id )
 {
 	if( menu<0 || menu >= s_Menus.size())
 		return;
@@ -210,7 +212,7 @@ void ncMainWindow::AddMenuItem( int menu, const wchar_t * pcName, int id )
 	::DrawMenuBar( s_hWnd );
 }
 
-void ncMainWindow::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
+void MainWindow::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
 {
 	if( menu<0 || menu >= s_Menus.size())
 		return;
@@ -219,6 +221,8 @@ void ncMainWindow::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
 	::AppendMenu( s_Menus[menu], MF_STRING | MF_POPUP, (UINT_PTR)s_Menus[submenu], pcName );
 	::DrawMenuBar( s_hWnd );
 }
+
+} //NanoCore
 
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {

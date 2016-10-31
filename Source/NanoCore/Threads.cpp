@@ -3,9 +3,9 @@
 #include <stdarg.h>
 #include "Threads.h"
 
+namespace NanoCore {
 
-
-struct ncThread::Impl
+struct Thread::Impl
 {
 	HANDLE hThread;
 	void * params;
@@ -14,11 +14,11 @@ struct ncThread::Impl
 	Impl() : hThread(0), params(0), id(0) {}
 };
 
-ncThread::ncThread() {
+Thread::Thread() {
 	m_pImpl = new Impl();
 }
 
-ncThread::~ncThread() {
+Thread::~Thread() {
 	if( m_pImpl->hThread )
 		Terminate();
 	delete m_pImpl;
@@ -26,13 +26,13 @@ ncThread::~ncThread() {
 
 static DWORD WINAPI StartThreadProc( void * params )
 {
-	ncThread * pThread = (ncThread*)params;
+	Thread * pThread = (Thread*)params;
 	pThread->Run( pThread->m_pImpl->params );
 	pThread->m_pImpl->hThread = NULL;
 	return 0;
 }
 
-bool ncThread::Start( void * params )
+bool Thread::Start( void * params )
 {
 	if( m_pImpl->hThread )
 		return false;
@@ -42,12 +42,12 @@ bool ncThread::Start( void * params )
 	return true;
 }
 
-bool ncThread::IsRunning()
+bool Thread::IsRunning()
 {
 	return m_pImpl->hThread != NULL;
 }
 
-void ncThread::Terminate()
+void Thread::Terminate()
 {
 	if( m_pImpl->hThread ) {
 		TerminateThread( m_pImpl->hThread, 0 );
@@ -56,111 +56,113 @@ void ncThread::Terminate()
 	}
 }
 
-uint32 ncThread::GetId()
+uint32 Thread::GetId()
 {
 	return m_pImpl->id;
 }
 
-void ncThread::Wait()
+void Thread::Wait()
 {
-	if( m_pImpl->hThread && GetId() != ncGetCurrentThreadId() )
+	if( m_pImpl->hThread && GetId() != GetCurrentThreadId() )
 		WaitForSingleObject( m_pImpl->hThread, 0 );
 }
 
 
 
 
-struct ncCriticalSection
+struct CriticalSection
 {
 	CRITICAL_SECTION cs;
 	uint64 wait_ticks;
 
-	~ncCriticalSection() {
+	~CriticalSection() {
 		DeleteCriticalSection( &cs );
 	}
 };
 
-ncCriticalSection * ncCriticalSectionCreate()
+CriticalSection * CriticalSectionCreate()
 {
-	ncCriticalSection * p = new ncCriticalSection();
+	CriticalSection * p = new CriticalSection();
 	InitializeCriticalSection( &p->cs );
 	p->wait_ticks = 0;
 	return p;
 }
 
-void ncCriticalSectionDelete( ncCriticalSection * cs )
+void CriticalSectionDelete( CriticalSection * cs )
 {
 	if( cs )
 		delete cs;
 }
 
-void ncCriticalSectionEnter( ncCriticalSection * cs )
+void CriticalSectionEnter( CriticalSection * cs )
 {
 	if( cs ) {
-		uint64 t0 = ncGetTicks();
+		uint64 t0 = GetTicks();
 		EnterCriticalSection( &cs->cs );
-		cs->wait_ticks += ncGetTicks() - t0;
+		cs->wait_ticks += GetTicks() - t0;
 	}
 }
 
-void ncCriticalSectionLeave( ncCriticalSection * cs )
+void CriticalSectionLeave( CriticalSection * cs )
 {
 	if( cs )
 		LeaveCriticalSection( &cs->cs );
 }
 
-uint64 ncCriticalSectionGetWaitTicks( ncCriticalSection * cs )
+uint64 CriticalSectionGetWaitTicks( CriticalSection * cs )
 {
 	return cs ? cs->wait_ticks : 0;
 }
 
 
 
-void ncSleep( int ms )
+void Sleep( int ms )
 {
-	Sleep( ms );
+	::Sleep( ms );
 }
 
-uint64 ncGetTicks()
+uint64 GetTicks()
 {
 	LARGE_INTEGER li;
-	QueryPerformanceCounter( &li );
+	::QueryPerformanceCounter( &li );
 	return li.QuadPart;
 }
 
-uint64 ncTickToMicroseconds( uint64 ticks )
+uint64 TickToMicroseconds( uint64 ticks )
 {
 	LARGE_INTEGER li;
-	QueryPerformanceFrequency( &li );
+	::QueryPerformanceFrequency( &li );
 	return ticks * 1000000 / li.QuadPart;
 }
 
-void ncDebugOutput( const char * pcFormat, ... )
+void DebugOutput( const char * pcFormat, ... )
 {
 	char buf[2048];
 	va_list args;
 	va_start( args, pcFormat );
 	vsprintf_s( buf, sizeof(buf), pcFormat, args );
 	va_end( args );
-	OutputDebugStringA( buf );
+	::OutputDebugStringA( buf );
 }
 
-uint32 ncGetCurrentThreadId()
+uint32 GetCurrentThreadId()
 {
-	return GetCurrentThreadId();
+	return ::GetCurrentThreadId();
 }
 
-void ncGetSystemInfo( ncSystemInfo * pInfo )
+void GetSystemInfo( SystemInfo * pInfo )
 {
 	if( !pInfo ) return;
 	SYSTEM_INFO si;
-	GetSystemInfo( &si );
+	::GetSystemInfo( &si );
 	pInfo->ProcessorCount = si.dwNumberOfProcessors;
 }
 
-std::wstring ncGetCurrentFolder()
+std::wstring GetCurrentFolder()
 {
 	wchar_t wPath[MAX_PATH];
-	GetCurrentDirectory( MAX_PATH, wPath );
+	::GetCurrentDirectory( MAX_PATH, wPath );
 	return std::wstring(wPath);
+}
+
 }

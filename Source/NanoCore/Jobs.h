@@ -5,6 +5,8 @@
 
 
 
+namespace NanoCore {
+
 class IJobFrame;
 
 class IJob
@@ -52,4 +54,5 @@ public:
 	static IJobManager * Create();
 };
 
+}
 #endif

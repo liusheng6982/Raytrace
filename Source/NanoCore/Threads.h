@@ -6,18 +6,19 @@
 
 
 
-struct ncCriticalSection;
-ncCriticalSection * ncCriticalSectionCreate();
-void ncCriticalSectionDelete( ncCriticalSection * cs );
-void ncCriticalSectionEnter( ncCriticalSection * cs );
-void ncCriticalSectionLeave( ncCriticalSection * cs );
-uint64 ncCriticalSectionGetWaitTicks( ncCriticalSection * cs );
+namespace NanoCore {
 
-class ncThread
-{
+struct CriticalSection;
+CriticalSection * CriticalSectionCreate();
+void CriticalSectionDelete( CriticalSection * cs );
+void CriticalSectionEnter( CriticalSection * cs );
+void CriticalSectionLeave( CriticalSection * cs );
+uint64 CriticalSectionGetWaitTicks( CriticalSection * cs );
+
+class Thread {
 public:
-	ncThread();
-	virtual ~ncThread();
+	Thread();
+	virtual ~Thread();
 
 	bool   Start( void * params );
 	bool   IsRunning();
@@ -32,30 +33,29 @@ public:
 	virtual void OnTerminate() {}
 };
 
-struct ncCriticalSectionScope
-{
-	ncCriticalSectionScope( ncCriticalSection * cs ) : m_pCS(cs) {
-		ncCriticalSectionEnter( cs );
+struct CriticalSectionScope {
+	CriticalSectionScope( CriticalSection * cs ) : m_pCS(cs) {
+		CriticalSectionEnter( cs );
 	}
-	~ncCriticalSectionScope() {
-		ncCriticalSectionLeave( m_pCS );
+	~CriticalSectionScope() {
+		CriticalSectionLeave( m_pCS );
 	}
 private:
-	ncCriticalSection * m_pCS;
+	CriticalSection * m_pCS;
 };
 
-struct ncSystemInfo
+struct SystemInfo
 {
 	int ProcessorCount;
 };
 
-void   ncSleep( int ms );
-uint64 ncGetTicks();
-uint64 ncTickToMicroseconds( uint64 ticks );
-void   ncDebugOutput( const char * pcFormat, ... );
-void   ncGetSystemInfo( ncSystemInfo * pInfo );
-uint32 ncGetCurrentThreadId();
-std::wstring ncGetCurrentFolder();
+void   Sleep( int ms );
+uint64 GetTicks();
+uint64 TickToMicroseconds( uint64 ticks );
+void   DebugOutput( const char * pcFormat, ... );
+void   GetSystemInfo( SystemInfo * pInfo );
+uint32 GetCurrentThreadId();
+std::wstring GetCurrentFolder();
 
-
+}
 #endif

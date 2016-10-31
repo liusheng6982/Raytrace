@@ -246,10 +246,10 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 	}
 }
 
-static IJobManager * s_pJobManager;
-static IJobFrame * s_pJobFrame;
+static NanoCore::IJobManager * s_pJobManager;
+static NanoCore::IJobFrame * s_pJobFrame;
 
-class RaytraceJob : public IJob
+class RaytraceJob : public NanoCore::IJob
 {
 public:
 	int tile_x,tile_y;
@@ -297,7 +297,7 @@ static std::vector<RaytraceJob> jobs;
 
 Raytracer::Raytracer()
 {
-	s_pJobManager = IJobManager::Create();
+	s_pJobManager = NanoCore::IJobManager::Create();
 	s_pJobManager->Init( 0, 1 );
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;

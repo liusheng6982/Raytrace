@@ -12,7 +12,7 @@
 #include "RayTracer.h"
 #include <memory>
 
-class LoadingThread : public ncThread
+class LoadingThread : public NanoCore::Thread
 {
 public:
 	LoadingThread() : m_pTree(NULL), m_pLoader(NULL) {}
@@ -51,7 +51,7 @@ private:
 	bool m_bLoading;
 };
 
-class MainWnd : public ncMainWindow
+class MainWnd : public NanoCore::MainWindow
 {
 	const static int IDC_FILE_OPEN = 1001;
 	const static int IDC_FILE_EXIT = 1002;
@@ -232,7 +232,7 @@ public:
 		m_Cameras.push_back( m_Camera );
 	}
 	void LoadModel() {
-		std::wstring wFolder = ncGetCurrentFolder();
+		std::wstring wFolder = NanoCore::GetCurrentFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
 		if( !wFile.empty()) {
 			m_LoadingThread.Init( wFile, &m_KDTree );
@@ -283,7 +283,7 @@ int Main()
 	pWnd->SetStatus( NULL );
 
 	while( pWnd->Update()) {
-		ncSleep( 10 );
+		NanoCore::Sleep( 10 );
 	}
 	delete pWnd;
 	return 0;

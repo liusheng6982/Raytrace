@@ -4,13 +4,13 @@
 #include <string>
 #include "Common.h"
 
+namespace NanoCore {
 
-
-class ncMainWindow
+class MainWindow
 {
 public:
-	ncMainWindow();
-	virtual ~ncMainWindow();
+	MainWindow();
+	virtual ~MainWindow();
 
 	bool Init( int w, int h );
 	bool Update();
@@ -39,4 +39,5 @@ public:
 	void AddMenuItem( int menu, const wchar_t * pcName, int id );
 };
 
+}
 #endif
