@@ -52,6 +52,7 @@ void ncThread::Terminate()
 	if( m_pImpl->hThread ) {
 		TerminateThread( m_pImpl->hThread, 0 );
 		m_pImpl->hThread = NULL;
+		OnTerminate();
 	}
 }
 

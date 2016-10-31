@@ -15,69 +15,77 @@
 class LoadingThread : public ncThread
 {
 public:
-	LoadingThread( std::wstring wFile, KDTree * pTree ) {
+	LoadingThread() : m_pTree(NULL), m_pLoader(NULL) {}
+	void Init( std::wstring wFile, KDTree * pTree ) {
 		m_wFile = wFile;
 		m_pTree = pTree;
 		m_pLoader = NULL;
 	}
 	void GetStatus( std::wstring & status ) {
-		if( m_pLoader ) {
+		if( m_bLoading && m_pLoader ) {
 			wchar_t buf[64];
 			swprintf( buf, L"Loading %d %%", m_pLoader->GetLoadingProgress());
 			status += buf;
 		} else
 			status += L"Building KD-tree";
 	}
-	virtual void Run( void* )
-	{
+	virtual void Run( void* ) {
 		m_pLoader = IObjectFileLoader::Create();
+		m_bLoading = true;
 		m_pLoader->Load( m_wFile.c_str() );
-		IObjectFileLoader * p = m_pLoader;
-		m_pLoader = NULL;
-		m_pTree->Build( p, 40 );
-
-		delete p;
+		m_bLoading = false;
+		m_pTree->Build( m_pLoader, 40 );
+		OnTerminate();
+	}
+	virtual void OnTerminate() {
+		if( m_pLoader ) {
+			delete m_pLoader;
+			m_pLoader = NULL;
+		}
 	}
 
 private:
 	std::wstring m_wFile;
 	KDTree * m_pTree;
 	IObjectFileLoader * m_pLoader;
+	bool m_bLoading;
 };
 
 class MainWnd : public ncMainWindow
 {
+	const static int IDC_FILE_OPEN = 1001;
+	const static int IDC_FILE_EXIT = 1002;
+	const static int IDC_VIEW_CENTER_CAMERA = 1003;
+	const static int IDC_VIEW_CAPTURE_CURRENT_CAMERA = 1004;
+	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBE = 1100;
+	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED = 1101;
+	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1102;
+	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1103;
+	const static int IDC_CAMERAS_FIRST = 2000;
+
+	enum EState {
+		STATE_LOADING,
+		STATE_PREVIEW,
+		STATE_RENDERING,
+	};
+
 public:
-	MainWnd()
-	{
-		m_pModel = std::auto_ptr<IObjectFileLoader>( IObjectFileLoader::Create() );
-		m_csStatus = ncCriticalSectionCreate();
-		m_pLoadingThread = NULL;
+	MainWnd() {
 		m_Raytracer.m_pKDTree = &m_KDTree;
 		m_Raytracer.m_pImage = &m_Image;
 		m_Raytracer.m_pCamera = &m_Camera;
 		m_bInvalidate = false;
+		m_State = STATE_PREVIEW;
+		m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
 	}
-	~MainWnd()
-	{
-		//delete m_pModel;
-		ncCriticalSectionDelete( m_csStatus );
+	~MainWnd() {
 	}
-	virtual void OnKey( int key )
-	{
+	virtual void OnKey( int key ) {
 		switch( key ) {
-			case 79:
-			case 76:
-				LoadModel();
-				break;
 			case 80:
-				
 			case 32:
 				if( !m_Raytracer.IsRendering())
 					m_Raytracer.Render();
-				break;
-			case 90:
-				CenterCamera();
 				break;
 		}
 	}
@@ -122,49 +130,113 @@ public:
 	}
 	virtual void OnUpdate()
 	{
-		if( m_pLoadingThread ) {
-			if( m_pLoadingThread->IsRunning()) {
-				std::wstring str;
-				m_pLoadingThread->GetStatus( str );
-				SetStatus( str.c_str() );
-			} else {
-				delete m_pLoadingThread;
-				m_pLoadingThread = NULL;
-				SetStatus( NULL );
-				CenterCamera();
-			}
-		} else {
-			if( m_Raytracer.IsRendering()) {
-				std::wstring str;
-				m_Raytracer.GetStatus( str );
-				SetStatus( str.c_str());
-			} else
-				SetStatus( NULL );
+		switch( m_State ) {
+			case STATE_LOADING:
+				if( m_LoadingThread.IsRunning()) {
+					std::wstring str;
+					m_LoadingThread.GetStatus( str );
+					SetStatus( str.c_str() );
+				} else {
+					SetStatus( NULL );
+					CenterCamera();
+					m_State = STATE_PREVIEW;
+				}
+				break;
+			case STATE_PREVIEW:
+				if( m_bInvalidate && !m_Raytracer.IsRendering()) {
+					m_Raytracer.Render();
+					m_bInvalidate = false;
+				}
+				Redraw();
+				break;
 
-			if( m_bInvalidate && !m_Raytracer.IsRendering()) {
-				m_Raytracer.Render();
-				m_bInvalidate = false;
-			}
-
-			Redraw();
+			case STATE_RENDERING:
+				if( m_Raytracer.IsRendering()) {
+					std::wstring str;
+					m_Raytracer.GetStatus( str );
+					SetStatus( str.c_str());
+				} else
+					SetStatus( NULL );
+				break;
 		}
 	}
-	virtual void OnMenu( int id )
-	{
+	virtual void OnInit() {
+		int mainMenu = CreateMenu();
+		int fileMenu = CreateMenu();
+		int viewMenu = CreateMenu();
+		m_CamerasMenu = CreateMenu();
+		int previewMenu = CreateMenu();
+		AddMenuItem( mainMenu, L"File", true, fileMenu );
+			AddMenuItem( fileMenu, L"Open", false, IDC_FILE_OPEN );
+			AddMenuItem( fileMenu, L"Exit", false, IDC_FILE_EXIT );
+		AddMenuItem( mainMenu, L"View", true, viewMenu );
+			AddMenuItem( viewMenu, L"Center camera", false, IDC_VIEW_CENTER_CAMERA );
+			AddMenuItem( viewMenu, L"Capture current camera", false, IDC_VIEW_CAPTURE_CURRENT_CAMERA );
+			AddMenuItem( viewMenu, L"Preview mode", true, previewMenu );
+				AddMenuItem( previewMenu, L"Colored cube", false, IDC_VIEW_PREVIEWMODE_COLOREDCUBE );
+				AddMenuItem( previewMenu, L"Colored cube shadowed", false, IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED );
+				AddMenuItem( previewMenu, L"Triangle ID", false, IDC_VIEW_PREVIEWMODE_TRIANGLEID );
+				AddMenuItem( previewMenu, L"Checker", false, IDC_VIEW_PREVIEWMODE_CHECKER );
+		AddMenuItem( mainMenu, L"Cameras", true, m_CamerasMenu );
+	}
+	virtual void OnQuit() {
+		m_Raytracer.Stop();
+	}
+	virtual void OnMenu( int id ) {
 		switch( id ) {
-			case 1000:
-				LoadModel();
+			case IDC_FILE_OPEN:
+				if( m_State == STATE_PREVIEW ) {
+					m_State = STATE_LOADING;
+					LoadModel();
+				}
 				break;
-			case 1001:
+			case IDC_FILE_EXIT:
+				m_Raytracer.Stop();
+				Exit();
+				break;
+			case IDC_VIEW_CENTER_CAMERA:
+				if( m_State == STATE_PREVIEW )
+					CenterCamera();
+				break;
+			case IDC_VIEW_CAPTURE_CURRENT_CAMERA:
+				AddCurrentCamera();
+				break;
+			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
+				m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
+				m_bInvalidate = true;
+				break;
+			case IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED:
+				m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCubeShadowed;
+				m_bInvalidate = true;
+				break;
+			case IDC_VIEW_PREVIEWMODE_TRIANGLEID:
+				m_Raytracer.m_Shading = Raytracer::ePreviewShading_TriangleID;
+				m_bInvalidate = true;
+				break;
+			case IDC_VIEW_PREVIEWMODE_CHECKER:
+				m_Raytracer.m_Shading = Raytracer::ePreviewShading_Checker;
+				m_bInvalidate = true;
+				break;
+			default:
+				if( id >= IDC_CAMERAS_FIRST ) {
+					m_Camera = m_Cameras[id - IDC_CAMERAS_FIRST];
+					m_bInvalidate = true;
+				}
 				break;
 		}
+	}
+	void AddCurrentCamera() {
+		wchar_t w[128];
+		swprintf( w, L"Camera %d", m_Cameras.size()+1 );
+		AddMenuItem( m_CamerasMenu, w, false, IDC_CAMERAS_FIRST + m_Cameras.size());
+		m_Cameras.push_back( m_Camera );
 	}
 	void LoadModel() {
 		std::wstring wFolder = ncGetCurrentFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
 		if( !wFile.empty()) {
-			m_pLoadingThread = new LoadingThread( wFile, &m_KDTree );
-			m_pLoadingThread->Start( NULL );
+			m_LoadingThread.Init( wFile, &m_KDTree );
+			m_LoadingThread.Start( NULL );
 		}
 	}
 	void SetStatus( const wchar_t * pcStatus ) {
@@ -175,31 +247,33 @@ public:
 		}
 		SetCaption( s.c_str());
 	}
-	void CenterCamera()
-	{
-		if( !m_KDTree.Empty() )
-		{
-			float3 min, max;
-			m_KDTree.GetBBox( min, max );
+	void CenterCamera() {
+		if( m_KDTree.Empty())
+			return;
 
-			float3 center = (min + max) * 0.5f;
-			float L = len( min - center )*0.7f;
+		float3 min, max;
+		m_KDTree.GetBBox( min, max );
 
-			m_Camera.fovy = 60.0f * 3.1415f / 180.0f;
-			m_Camera.world_up = float3(0,-1,0);
-			m_Camera.LookAt( center, float3(1,0,-1)*L );
-		}
+		float3 center = (min + max) * 0.5f;
+		float L = len( min - center );
+
+		m_Camera.fovy = 60.0f * 3.1415f / 180.0f;
+		m_Camera.world_up = float3(0,-1,0);
+		m_Camera.LookAt( center, float3(1,-1,-1)*L );
+		m_bInvalidate = true;
 	}
 
-	std::auto_ptr<IObjectFileLoader> m_pModel;
-	ncCriticalSection * m_csStatus;
-	std::string m_strStatus;
-	LoadingThread * m_pLoadingThread;
+	std::string     m_strStatus;
+	LoadingThread   m_LoadingThread;
 	KDTree          m_KDTree;
 	Image           m_Image;
 	Camera          m_Camera;
 	Raytracer       m_Raytracer;
 	bool            m_bInvalidate;
+	EState          m_State;
+	int             m_CamerasMenu;
+	std::vector<Camera> m_Cameras;
+	Raytracer::EShading m_PreviewShading;
 };
 
 int Main()
@@ -207,13 +281,6 @@ int Main()
 	MainWnd * pWnd = new MainWnd();
 	pWnd->Init( 800, 600 );
 	pWnd->SetStatus( NULL );
-
-	int mainMenu = pWnd->CreateMenu();
-	int fileMenu = pWnd->CreateMenu();
-
-	pWnd->AddMenuItem( mainMenu, L"File", true, fileMenu );
-	pWnd->AddMenuItem( fileMenu, L"Open", false, 1000 );
-	pWnd->AddMenuItem( fileMenu, L"Exit", false, 1001 );
 
 	while( pWnd->Update()) {
 		ncSleep( 10 );

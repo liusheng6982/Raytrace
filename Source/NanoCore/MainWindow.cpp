@@ -69,11 +69,14 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 				s_pMainWindow->OnMenu( LOWORD(wParam) );
 				break;
 			}
-		case WM_DESTROY: {
-			s_bQuit = true;
+		case WM_DESTROY:
 			PostQuitMessage(0);
 			break;
-		}
+		case WM_QUIT:
+		case WM_CLOSE:
+			s_pMainWindow->OnQuit();
+			s_bQuit = true;
+			break;
 		default:
 			return DefWindowProc( hWnd, message, wParam, lParam );
 	}
@@ -106,6 +109,7 @@ bool ncMainWindow::Init( int w, int h )
 	if( !s_hWnd )
 		return false;
 
+	OnInit();
 	ShowWindow( s_hWnd, s_CmdShow );
 	UpdateWindow( s_hWnd );	
 
@@ -134,12 +138,9 @@ void ncMainWindow::Redraw()
 	UpdateWindow( s_hWnd );
 }
 
-int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
+void ncMainWindow::Exit()
 {
-	s_hInstance = hInstance;
-	s_CmdShow = nCmdShow;
-
-	return Main();
+	::PostQuitMessage( 0 );
 }
 
 int ncMainWindow::GetWidth()
@@ -213,4 +214,12 @@ void ncMainWindow::AddMenuItem( int menu, const wchar_t * pcName, bool bSubmenu,
 
 	::AppendMenu( s_Menus[menu], flags, bSubmenu ? (UINT_PTR)s_Menus[id] : (UINT_PTR)id, pcName );
 	::DrawMenuBar( s_hWnd );
+}
+
+int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
+{
+	s_hInstance = hInstance;
+	s_CmdShow = nCmdShow;
+
+	return Main();
 }

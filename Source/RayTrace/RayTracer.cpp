@@ -205,28 +205,42 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 {
 	RayInfo ri;
 	ri.Init( x, y, *m_pCamera );
-
 	m_pKDTree->Intersect( ri );
 
 	if( ri.tri ) {
-
+		float shade = 255.0f;
 		RayInfo rSun;
-		rSun.pos = ri.GetHit() + ri.n*0.01f;
-		rSun.dir = normalize( float3(1,8,1));
-		rSun.tri = NULL;
-		rSun.hitlen = 10000000.0f;
-		m_pKDTree->Intersect( rSun );
 
-		float shade = rSun.tri ? 50.0f : 255.0f;
-
-		pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
-		pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
-		pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
-
-		/*uint32 c = (uint32)ri.tri;
-		pixel[0] = c&0xFF;
-		pixel[1] = (c>>8)&0xFF;
-		pixel[2] = (c>>16)&0xFF;*/
+		switch( m_Shading ) {
+			case ePreviewShading_ColoredCubeShadowed:
+				rSun.pos = ri.GetHit() + ri.n*0.01f;
+				rSun.dir = normalize( float3(1,8,1));
+				rSun.tri = NULL;
+				rSun.hitlen = 10000000.0f;
+				m_pKDTree->Intersect( rSun );
+				shade = rSun.tri ? 50.0f : 255.0f;
+			case ePreviewShading_ColoredCube:
+				pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
+				pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
+				pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
+				break;
+			case ePreviewShading_TriangleID: {
+				uint32 c = (uint32)ri.tri;
+				pixel[0] = c&0xFF;
+				pixel[1] = (c>>8)&0xFF;
+				pixel[2] = (c>>16)&0xFF;
+				break;
+			}
+			case ePreviewShading_Checker: {
+				float3 hit = ri.GetHit();
+				float shade = dot( ri.n, normalize( float3(1,8,1)));
+				if( shade < 0.0f ) shade = 0.0f;
+				shade = shade*0.5f + 0.5f;
+				int c = int(hit.x) + int(hit.y) + int(hit.z);
+				pixel[0] = pixel[1] = pixel[2] = ((c&1) ? 255 : 50)*shade;
+				break;
+			}
+		}
 	} else {
 		pixel[0] = pixel[1] = pixel[2] = 0;
 	}
@@ -287,7 +301,7 @@ Raytracer::Raytracer()
 	s_pJobManager->Init( 0, 1 );
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;
-	m_bPreview = true;
+	m_Shading = ePreviewShading_ColoredCube;
 }
 
 Raytracer::~Raytracer()

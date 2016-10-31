@@ -16,6 +16,7 @@ public:
 	bool Update();
 	void SetCaption( const wchar_t * pwCaption );
 	void Redraw();
+	void Exit();
 
 	virtual void OnKey( int key ) {}
 	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel ) {}
@@ -23,6 +24,8 @@ public:
 	virtual void OnDraw() {}
 	virtual void OnUpdate() {}
 	virtual void OnMenu( int id ) {}
+	virtual void OnInit() {}
+	virtual void OnQuit() {}
 
 	int GetWidth();
 	int GetHeight();

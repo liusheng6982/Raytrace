@@ -29,6 +29,7 @@ public:
 	Impl * m_pImpl;
 
 	virtual void Run( void * params ) = 0;
+	virtual void OnTerminate() {}
 };
 
 struct ncCriticalSectionScope

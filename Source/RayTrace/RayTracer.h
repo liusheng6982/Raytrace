@@ -16,7 +16,13 @@ public:
 	KDTree * m_pKDTree;
 
 	int     m_ScreenTileSizePow2;
-	bool    m_bPreview;
+
+	enum EShading {
+		ePreviewShading_ColoredCube,
+		ePreviewShading_ColoredCubeShadowed,
+		ePreviewShading_TriangleID,
+		ePreviewShading_Checker,
+	};
 
 	Raytracer();
 	~Raytracer();
@@ -31,6 +37,7 @@ public:
 
 	mutable int m_PixelCompleteCount;
 	int m_TotalPixelCount;
+	EShading m_Shading;
 };
 
 #endif
