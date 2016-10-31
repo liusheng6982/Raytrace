@@ -11,8 +11,9 @@ extern int Main();
 
 static TCHAR szWindowClass[] = _T("MainWindow");
 
-static HINSTANCE s_hInstance;
-static HWND s_hWnd;
+HINSTANCE g_hInstance;
+HWND g_hWnd;
+
 static HDC  s_hDrawDC;
 static int s_CmdShow;
 static NanoCore::MainWindow * s_pMainWindow;
@@ -100,20 +101,20 @@ MainWindow::~MainWindow()
 
 bool MainWindow::Init( int w, int h )
 {
-	WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, WndProc, 0, 0, s_hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, szWindowClass, 0 };
-	wcex.hIcon          = LoadIcon( s_hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
+	WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, WndProc, 0, 0, g_hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, szWindowClass, 0 };
+	wcex.hIcon          = LoadIcon( g_hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
 	wcex.hCursor        = LoadCursor( NULL, IDC_ARROW );
-	wcex.hIconSm        = LoadIcon( s_hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
+	wcex.hIconSm        = LoadIcon( g_hInstance, MAKEINTRESOURCE(IDI_APPLICATION) );
 	if( ! RegisterClassEx( &wcex ))
 		return false;
 
-	s_hWnd = CreateWindow( szWindowClass, _T(""), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 820, 650, NULL, NULL, s_hInstance, NULL );
-	if( !s_hWnd )
+	g_hWnd = CreateWindow( szWindowClass, _T(""), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 820, 650, NULL, NULL, g_hInstance, NULL );
+	if( !g_hWnd )
 		return false;
 
 	OnInit();
-	ShowWindow( s_hWnd, s_CmdShow );
-	UpdateWindow( s_hWnd );	
+	ShowWindow( g_hWnd, s_CmdShow );
+	UpdateWindow( g_hWnd );	
 
 	return true;
 }
@@ -131,13 +132,13 @@ bool MainWindow::Update()
 
 void MainWindow::SetCaption( const wchar_t * pwCaption )
 {
-	SetWindowText( s_hWnd, pwCaption );
+	SetWindowText( g_hWnd, pwCaption );
 }
 
 void MainWindow::Redraw()
 {
-	InvalidateRect( s_hWnd, NULL, TRUE );
-	UpdateWindow( s_hWnd );
+	InvalidateRect( g_hWnd, NULL, TRUE );
+	UpdateWindow( g_hWnd );
 }
 
 void MainWindow::Exit()
@@ -161,7 +162,7 @@ std::wstring MainWindow::ChooseFile( const wchar_t * pwFolder, const wchar_t * p
 
 	OPENFILENAME ofn = {0};
 	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = s_hWnd;
+	ofn.hwndOwner = g_hWnd;
 	ofn.lpstrTitle = pwCaption;
 	ofn.lpstrFile = wBuffer;
 	ofn.nMaxFile = 1024;
@@ -199,7 +200,7 @@ int MainWindow::CreateMenu()
 {
 	s_Menus.push_back( ::CreateMenu() );
 	if( s_Menus.size() == 1 ) {
-		::SetMenu( s_hWnd, s_Menus[0] );
+		::SetMenu( g_hWnd, s_Menus[0] );
 	}
 	return int(s_Menus.size()-1);
 }
@@ -209,7 +210,7 @@ void MainWindow::AddMenuItem( int menu, const wchar_t * pcName, int id )
 	if( menu<0 || menu >= s_Menus.size())
 		return;
 	::AppendMenu( s_Menus[menu], MF_STRING, (UINT_PTR)id, pcName );
-	::DrawMenuBar( s_hWnd );
+	::DrawMenuBar( g_hWnd );
 }
 
 void MainWindow::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
@@ -219,14 +220,14 @@ void MainWindow::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
 	if( submenu < 0 || submenu >= s_Menus.size())
 		return;
 	::AppendMenu( s_Menus[menu], MF_STRING | MF_POPUP, (UINT_PTR)s_Menus[submenu], pcName );
-	::DrawMenuBar( s_hWnd );
+	::DrawMenuBar( g_hWnd );
 }
 
 } //NanoCore
 
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
-	s_hInstance = hInstance;
+	g_hInstance = hInstance;
 	s_CmdShow = nCmdShow;
 
 	return Main();

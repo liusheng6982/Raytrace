@@ -1,7 +1,8 @@
 #include <NanoCore/Jobs.h>
 #include "RayTracer.h"
+#include <stdlib.h>
 
-/*
+
 
 static float randf()
 {
@@ -12,6 +13,14 @@ static float randf( float a, float b )
 {
 	return a + randf()*(b - a);
 }
+
+static float3 randUnitSphere()
+{
+	float3 v( randf(-1.f, 1.f), randf(-1.f,1.f), randf(-1.f,1.f));
+	return normalize( v );
+}
+
+/*
 
 static Vec3 randhemi( Vec3 n )
 {
@@ -213,12 +222,29 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 
 		switch( m_Shading ) {
 			case ePreviewShading_ColoredCubeShadowed:
-				rSun.pos = ri.GetHit() + ri.n*0.01f;
-				rSun.dir = normalize( float3(1,8,1));
-				rSun.tri = NULL;
-				rSun.hitlen = 10000000.0f;
-				m_pKDTree->Intersect( rSun );
-				shade = rSun.tri ? 50.0f : 255.0f;
+				if( m_SunSamples ) {
+					int intersect = 0;
+
+					float len = ncTan( m_SunDiskAngle * 0.5f * 3.1415f / 180.0f );
+
+					for( int i=0; i<m_SunSamples; ++i )
+					{
+						rSun.pos = ri.GetHit() + ri.n*0.01f;
+						rSun.dir = normalize( float3(1,8,1));
+
+						if( m_SunSamples > 1 ) {
+							rSun.dir += randUnitSphere()*len;
+							rSun.dir = normalize( rSun.dir );
+						}
+
+						rSun.tri = NULL;
+						rSun.hitlen = 10000000.0f;
+						m_pKDTree->Intersect( rSun );
+						if( rSun.tri ) intersect++;
+					}
+					float shadow = float(intersect) / m_SunSamples;
+					shade = 255 - shadow*200.0f;
+				}
 			case ePreviewShading_ColoredCube:
 				pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
 				pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
@@ -302,6 +328,9 @@ Raytracer::Raytracer()
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;
 	m_Shading = ePreviewShading_ColoredCube;
+	m_SunSamples = 1;
+	m_SunDiskAngle = 6.0f;
+	m_GIBounces = 3;
 }
 
 Raytracer::~Raytracer()

@@ -7,6 +7,7 @@
 
 #include <NanoCore/Threads.h>
 #include <NanoCore/MainWindow.h>
+#include <NanoCore/InputDialog.h>
 #include "ObjectFileLoader.h"
 #include "KDTree.h"
 #include "RayTracer.h"
@@ -61,6 +62,7 @@ class MainWnd : public NanoCore::MainWindow
 	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED = 1101;
 	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1102;
 	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1103;
+	const static int IDC_VIEW_OPTIONS = 1005;
 	const static int IDC_CAMERAS_FIRST = 2000;
 
 	enum EState {
@@ -177,6 +179,7 @@ public:
 				AddMenuItem( previewMenu, L"Colored cube shadowed", IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED );
 				AddMenuItem( previewMenu, L"Triangle ID", IDC_VIEW_PREVIEWMODE_TRIANGLEID );
 				AddMenuItem( previewMenu, L"Checker", IDC_VIEW_PREVIEWMODE_CHECKER );
+			AddMenuItem( viewMenu, L"Options", IDC_VIEW_OPTIONS );
 		AddSubmenu( mainMenu, L"Cameras", m_CamerasMenu );
 	}
 	virtual void OnQuit() {
@@ -201,6 +204,16 @@ public:
 			case IDC_VIEW_CAPTURE_CURRENT_CAMERA:
 				AddCurrentCamera();
 				break;
+			case IDC_VIEW_OPTIONS: {
+				static NanoCore::InputDialog * dlg = NULL;
+				if( dlg ) delete dlg;
+				dlg = new NanoCore::InputDialog();
+				dlg->Add( L"GI bounces", m_Raytracer.m_GIBounces );
+				dlg->Add( L"Sun samples", m_Raytracer.m_SunSamples );
+				dlg->Add( L"Sun disk angle", m_Raytracer.m_SunDiskAngle );
+				dlg->Run( L"Options" );
+				break;
+			}
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
 				m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
 				m_bInvalidate = true;

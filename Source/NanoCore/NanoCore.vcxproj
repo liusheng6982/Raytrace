@@ -133,12 +133,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
+    <ClInclude Include="InputDialog.h" />
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Threads.h" />
     <ClInclude Include="MainWindow.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="InputDialog.cpp" />
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Threads.cpp" />

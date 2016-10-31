@@ -38,6 +38,10 @@ public:
 	mutable int m_PixelCompleteCount;
 	int m_TotalPixelCount;
 	EShading m_Shading;
+
+	int m_GIBounces;
+	int m_SunSamples;
+	int m_SunDiskAngle;
 };
 
 #endif
