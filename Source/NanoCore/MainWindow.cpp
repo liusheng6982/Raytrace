@@ -202,17 +202,21 @@ int ncMainWindow::CreateMenu()
 	return int(s_Menus.size()-1);
 }
 
-void ncMainWindow::AddMenuItem( int menu, const wchar_t * pcName, bool bSubmenu, int id )
+void ncMainWindow::AddMenuItem( int menu, const wchar_t * pcName, int id )
 {
 	if( menu<0 || menu >= s_Menus.size())
 		return;
-	if( bSubmenu && ( id < 0 || id >= s_Menus.size()))
+	::AppendMenu( s_Menus[menu], MF_STRING, (UINT_PTR)id, pcName );
+	::DrawMenuBar( s_hWnd );
+}
+
+void ncMainWindow::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
+{
+	if( menu<0 || menu >= s_Menus.size())
 		return;
-
-	UINT flags = MF_STRING;
-	if( bSubmenu ) flags |= MF_POPUP;
-
-	::AppendMenu( s_Menus[menu], flags, bSubmenu ? (UINT_PTR)s_Menus[id] : (UINT_PTR)id, pcName );
+	if( submenu < 0 || submenu >= s_Menus.size())
+		return;
+	::AppendMenu( s_Menus[menu], MF_STRING | MF_POPUP, (UINT_PTR)s_Menus[submenu], pcName );
 	::DrawMenuBar( s_hWnd );
 }
 

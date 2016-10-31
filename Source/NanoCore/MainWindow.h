@@ -35,7 +35,8 @@ public:
 	void  DrawText( int x, int y, const char * pcText );
 
 	int CreateMenu();
-	void AddMenuItem( int menu, const wchar_t * pcName, bool bSubmenu, int id );
+	void AddSubmenu( int menu, const wchar_t * pcName, int submenu );
+	void AddMenuItem( int menu, const wchar_t * pcName, int id );
 };
 
 #endif

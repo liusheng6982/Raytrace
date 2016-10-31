@@ -166,18 +166,18 @@ public:
 		int viewMenu = CreateMenu();
 		m_CamerasMenu = CreateMenu();
 		int previewMenu = CreateMenu();
-		AddMenuItem( mainMenu, L"File", true, fileMenu );
-			AddMenuItem( fileMenu, L"Open", false, IDC_FILE_OPEN );
-			AddMenuItem( fileMenu, L"Exit", false, IDC_FILE_EXIT );
-		AddMenuItem( mainMenu, L"View", true, viewMenu );
-			AddMenuItem( viewMenu, L"Center camera", false, IDC_VIEW_CENTER_CAMERA );
-			AddMenuItem( viewMenu, L"Capture current camera", false, IDC_VIEW_CAPTURE_CURRENT_CAMERA );
-			AddMenuItem( viewMenu, L"Preview mode", true, previewMenu );
-				AddMenuItem( previewMenu, L"Colored cube", false, IDC_VIEW_PREVIEWMODE_COLOREDCUBE );
-				AddMenuItem( previewMenu, L"Colored cube shadowed", false, IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED );
-				AddMenuItem( previewMenu, L"Triangle ID", false, IDC_VIEW_PREVIEWMODE_TRIANGLEID );
-				AddMenuItem( previewMenu, L"Checker", false, IDC_VIEW_PREVIEWMODE_CHECKER );
-		AddMenuItem( mainMenu, L"Cameras", true, m_CamerasMenu );
+		AddSubmenu( mainMenu, L"File", fileMenu );
+			AddMenuItem( fileMenu, L"Open", IDC_FILE_OPEN );
+			AddMenuItem( fileMenu, L"Exit", IDC_FILE_EXIT );
+		AddSubmenu( mainMenu, L"View", viewMenu );
+			AddMenuItem( viewMenu, L"Center camera", IDC_VIEW_CENTER_CAMERA );
+			AddMenuItem( viewMenu, L"Capture current camera", IDC_VIEW_CAPTURE_CURRENT_CAMERA );
+			AddSubmenu( viewMenu, L"Preview mode", previewMenu );
+				AddMenuItem( previewMenu, L"Colored cube", IDC_VIEW_PREVIEWMODE_COLOREDCUBE );
+				AddMenuItem( previewMenu, L"Colored cube shadowed", IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED );
+				AddMenuItem( previewMenu, L"Triangle ID", IDC_VIEW_PREVIEWMODE_TRIANGLEID );
+				AddMenuItem( previewMenu, L"Checker", IDC_VIEW_PREVIEWMODE_CHECKER );
+		AddSubmenu( mainMenu, L"Cameras", m_CamerasMenu );
 	}
 	virtual void OnQuit() {
 		m_Raytracer.Stop();
@@ -228,7 +228,7 @@ public:
 	void AddCurrentCamera() {
 		wchar_t w[128];
 		swprintf( w, L"Camera %d", m_Cameras.size()+1 );
-		AddMenuItem( m_CamerasMenu, w, false, IDC_CAMERAS_FIRST + m_Cameras.size());
+		AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + m_Cameras.size());
 		m_Cameras.push_back( m_Camera );
 	}
 	void LoadModel() {
