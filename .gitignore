@@ -8,6 +8,8 @@
 *.suo
 *.log
 *.lastbuildstate
+*.lib
+*.ilk
 
 # Windows image file caches
 Thumbs.db
@@ -56,3 +58,4 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+*.obj
