@@ -1,6 +1,13 @@
-Temp/*.*
-Bin/*.*
-Data/*.*
+*.obj
+*.jpg
+*.tlog
+*.pdb
+*.exe
+*.idb
+*.user
+*.suo
+*.log
+*.lastbuildstate
 
 # Windows image file caches
 Thumbs.db
