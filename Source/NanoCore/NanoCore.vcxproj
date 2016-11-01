@@ -133,18 +133,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
-    <ClInclude Include="InputDialog.h" />
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Threads.h" />
-    <ClInclude Include="MainWindow.h" />
+    <ClInclude Include="Windows.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="InputDialog.cpp" />
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Threads.cpp" />
-    <ClCompile Include="MainWindow.cpp" />
+    <ClCompile Include="Windows.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

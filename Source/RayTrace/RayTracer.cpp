@@ -328,12 +328,12 @@ static std::vector<RaytraceJob> jobs;
 Raytracer::Raytracer()
 {
 	s_pJobManager = NanoCore::IJobManager::Create();
-	s_pJobManager->Init( 10, 1 );
+	s_pJobManager->Init( 6, 1 );
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;
 	m_Shading = ePreviewShading_ColoredCube;
 	m_SunSamples = 1;
-	m_SunDiskAngle = 6.0f;
+	m_SunDiskAngle = 0.52f;
 	m_GIBounces = 3;
 }
 

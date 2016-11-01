@@ -41,7 +41,7 @@ public:
 
 	int m_GIBounces;
 	int m_SunSamples;
-	int m_SunDiskAngle;
+	float m_SunDiskAngle;
 };
 
 #endif

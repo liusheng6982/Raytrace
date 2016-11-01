@@ -6,8 +6,7 @@
 
 
 #include <NanoCore/Threads.h>
-#include <NanoCore/MainWindow.h>
-#include <NanoCore/InputDialog.h>
+#include <NanoCore/Windows.h>
 #include "ObjectFileLoader.h"
 #include "KDTree.h"
 #include "RayTracer.h"
@@ -52,7 +51,7 @@ private:
 	bool m_bLoading;
 };
 
-class MainWnd : public NanoCore::MainWindow
+class MainWnd : public NanoCore::WindowMain
 {
 	const static int IDC_FILE_OPEN = 1001;
 	const static int IDC_FILE_EXIT = 1002;
@@ -71,6 +70,21 @@ class MainWnd : public NanoCore::MainWindow
 		STATE_RENDERING,
 	};
 
+	class OptionsWnd : public NanoCore::WindowInputDialog {
+	public:
+		MainWnd & wnd;
+		OptionsWnd( MainWnd & wnd ) : wnd(wnd) {
+			Add( L"Preview resolution", wnd.m_PreviewResolution );
+			Add( L"GI bounces", wnd.m_Raytracer.m_GIBounces );
+			Add( L"Sun samples", wnd.m_Raytracer.m_SunSamples );
+			Add( L"Sun disk angle", wnd.m_Raytracer.m_SunDiskAngle );
+		}
+	protected:
+		virtual void OnOK() {
+			wnd.m_Image.Init( wnd.m_PreviewResolution, wnd.m_PreviewResolution * wnd.GetHeight() / wnd.GetWidth(), 24 );
+		}
+	};
+
 public:
 	MainWnd() {
 		m_Raytracer.m_pKDTree = &m_KDTree;
@@ -79,6 +93,7 @@ public:
 		m_bInvalidate = false;
 		m_State = STATE_PREVIEW;
 		m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
+		m_PreviewResolution = 200;
 	}
 	~MainWnd() {
 	}
@@ -120,7 +135,7 @@ public:
 	virtual void OnSize( int w, int h )
 	{
 		m_Raytracer.Stop();
-		m_Image.Init( w, h, 24 );
+		m_Image.Init( m_PreviewResolution, m_PreviewResolution * h / w, 24 );
 		m_bInvalidate = true;
 	}
 	virtual void OnDraw()
@@ -205,13 +220,8 @@ public:
 				AddCurrentCamera();
 				break;
 			case IDC_VIEW_OPTIONS: {
-				static NanoCore::InputDialog * dlg = NULL;
-				if( dlg ) delete dlg;
-				dlg = new NanoCore::InputDialog();
-				dlg->Add( L"GI bounces", m_Raytracer.m_GIBounces );
-				dlg->Add( L"Sun samples", m_Raytracer.m_SunSamples );
-				dlg->Add( L"Sun disk angle", m_Raytracer.m_SunDiskAngle );
-				dlg->Run( L"Options" );
+				m_OptionsWnd = std::auto_ptr<OptionsWnd>( new OptionsWnd( *this ) );
+				m_OptionsWnd->Show( L"Options" );
 				break;
 			}
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
@@ -287,6 +297,8 @@ public:
 	int             m_CamerasMenu;
 	std::vector<Camera> m_Cameras;
 	Raytracer::EShading m_PreviewShading;
+	int             m_PreviewResolution;
+	std::auto_ptr<OptionsWnd> m_OptionsWnd;
 };
 
 int Main()

@@ -2,15 +2,16 @@
 #define ___INC_NANOCORE_MAINWINDOW
 
 #include <string>
+#include <vector>
 #include "Common.h"
 
 namespace NanoCore {
 
-class MainWindow
+class WindowMain
 {
 public:
-	MainWindow();
-	virtual ~MainWindow();
+	WindowMain();
+	virtual ~WindowMain();
 
 	bool Init( int w, int h );
 	bool Update();
@@ -37,6 +38,25 @@ public:
 	int CreateMenu();
 	void AddSubmenu( int menu, const wchar_t * pcName, int submenu );
 	void AddMenuItem( int menu, const wchar_t * pcName, int id );
+};
+
+class WindowInputDialog {
+public:
+	WindowInputDialog();
+	virtual ~WindowInputDialog();
+
+	void Show( const wchar_t * caption );
+
+	struct Impl;
+	Impl * m_pImpl;
+
+	virtual void OnOK() {}
+
+protected:
+	void Add( const wchar_t * pName, std::string & str );
+	void Add( const wchar_t * name, float & f );
+	void Add( const wchar_t * name, int & i );
+	void Add( const wchar_t * pName, std::vector<std::wstring> & combo, int & item );
 };
 
 }

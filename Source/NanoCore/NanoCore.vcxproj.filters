@@ -5,14 +5,12 @@
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Mathematics.h" />
-    <ClInclude Include="MainWindow.h" />
-    <ClInclude Include="InputDialog.h" />
+    <ClInclude Include="Windows.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
-    <ClCompile Include="MainWindow.cpp" />
-    <ClCompile Include="InputDialog.cpp" />
+    <ClCompile Include="Windows.cpp" />
   </ItemGroup>
 </Project>
