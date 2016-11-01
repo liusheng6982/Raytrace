@@ -120,7 +120,7 @@ public:
 	virtual void OnSize( int w, int h )
 	{
 		m_Raytracer.Stop();
-		m_Image.Init( w/4, h/4, 24 );
+		m_Image.Init( w, h, 24 );
 		m_bInvalidate = true;
 	}
 	virtual void OnDraw()

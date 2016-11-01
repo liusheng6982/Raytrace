@@ -249,6 +249,10 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
 				pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
 				pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
+
+				//pixel[0] = int(100 * shade + 155);
+				//pixel[1] = int(100 * shade + 155);
+				//pixel[2] = int(100 * shade + 155);
 				break;
 			case ePreviewShading_TriangleID: {
 				uint32 c = (uint32)ri.tri;
@@ -324,7 +328,7 @@ static std::vector<RaytraceJob> jobs;
 Raytracer::Raytracer()
 {
 	s_pJobManager = NanoCore::IJobManager::Create();
-	s_pJobManager->Init( 0, 1 );
+	s_pJobManager->Init( 10, 1 );
 	s_pJobFrame = s_pJobManager->CreateJobFrame();
 	m_ScreenTileSizePow2 = 6;
 	m_Shading = ePreviewShading_ColoredCube;

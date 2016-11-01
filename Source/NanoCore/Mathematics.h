@@ -144,6 +144,7 @@ struct matrix  // row-major
 		v[2][0] = u.z*u.x*(1.0f - cosa) - u.y*sina;
 		v[2][1] = u.z*u.y*(1.0f - cosa) + u.x*sina;
 		v[2][2] = cosa + u.z*u.z*(1.0f - cosa);
+		v[2][3] = 0.0f;
 
 		v[3][0] = v[3][1] = v[3][2] = 0.0f;
 		v[3][3] = 1.0f;
