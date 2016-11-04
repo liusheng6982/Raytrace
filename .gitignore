@@ -12,6 +12,11 @@
 *.ilk
 *.ipch
 *.sdf
+*.cache
+*.manifest
+*.opensdf
+Bin/
+Temp/
 
 # Windows image file caches
 Thumbs.db
