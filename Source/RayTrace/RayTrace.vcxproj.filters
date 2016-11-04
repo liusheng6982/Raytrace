@@ -5,7 +5,6 @@
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="Common.cpp" />
-    <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="RayTracer.cpp" />

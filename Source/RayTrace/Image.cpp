@@ -34,8 +34,8 @@ int Image::WriteAsBMP( const char * pcPathFileName )
 		return 0;
 
 	char pc[512];
-	strcpy( pc, pcPathFileName );
-	strcat( pc, ".bmp" );
+	strcpy_s( pc, pcPathFileName );
+	strcat_s( pc, ".bmp" );
 	FILE * fp = fopen( pc, "wb" );
 	if( !fp ) return 0;
 

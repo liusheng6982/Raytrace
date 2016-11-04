@@ -14,4 +14,10 @@ typedef signed long        int32;
 typedef unsigned long long uint64;
 typedef signed long long   int64;
 
+#ifndef NDEBUG
+	#define assert(x) do{if(!(x))__asm{int 3}}while(0)
+#else
+	#define assert(x)
+#endif
+
 #endif

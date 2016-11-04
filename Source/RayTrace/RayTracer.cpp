@@ -267,7 +267,7 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				if( shade < 0.0f ) shade = 0.0f;
 				shade = shade*0.5f + 0.5f;
 				int c = int(hit.x) + int(hit.y) + int(hit.z);
-				pixel[0] = pixel[1] = pixel[2] = ((c&1) ? 255 : 50)*shade;
+				pixel[0] = pixel[1] = pixel[2] = int( ((c&1) ? 255 : 50)*shade );
 				break;
 			}
 		}
@@ -277,7 +277,6 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 }
 
 static NanoCore::IJobManager * s_pJobManager;
-static NanoCore::IJobFrame * s_pJobFrame;
 
 class RaytraceJob : public NanoCore::IJob
 {
@@ -328,8 +327,7 @@ static std::vector<RaytraceJob> jobs;
 Raytracer::Raytracer()
 {
 	s_pJobManager = NanoCore::IJobManager::Create();
-	s_pJobManager->Init( 6, 1 );
-	s_pJobFrame = s_pJobManager->CreateJobFrame();
+	s_pJobManager->Init( 0, 1 );
 	m_ScreenTileSizePow2 = 6;
 	m_Shading = ePreviewShading_ColoredCube;
 	m_SunSamples = 1;
@@ -339,19 +337,18 @@ Raytracer::Raytracer()
 
 Raytracer::~Raytracer()
 {
-	s_pJobFrame->Stop();
-	delete s_pJobFrame;
 	delete s_pJobManager;
 }
 
 void Raytracer::Stop()
 {
-	s_pJobFrame->Stop();
+	s_pJobManager->ClearPending();
+	s_pJobManager->Wait();
 }
 
 void Raytracer::Render()
 {
-	s_pJobFrame->Stop();
+	s_pJobManager->ClearPending();
 
 	int tileSize = 1 << m_ScreenTileSizePow2;
 	int w = m_pImage->GetWidth(), h = m_pImage->GetHeight();
@@ -386,7 +383,7 @@ void Raytracer::Render()
 			jobs[tw*th + (x+y*tw)] = j;
 		}
 	for( size_t i=0; i<jobs.size(); ++i )
-		s_pJobFrame->AddJob( &jobs[i] );
+		s_pJobManager->AddJob( &jobs[i] );
 }
 
 bool Raytracer::IsRendering()
@@ -399,7 +396,7 @@ void Raytracer::GetStatus( std::wstring & status )
 	if( m_PixelCompleteCount < m_TotalPixelCount ) {
 		status += L" | ";
 		wchar_t buf[128];
-		swprintf( buf, L"%d %%", m_PixelCompleteCount * 100 / m_TotalPixelCount );
+		swprintf( buf, 128, L"%d %%", m_PixelCompleteCount * 100 / m_TotalPixelCount );
 		status += buf;
 	}
 }

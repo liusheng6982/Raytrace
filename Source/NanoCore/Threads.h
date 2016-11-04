@@ -47,34 +47,17 @@ public:
 	void   Terminate();
 	uint32 GetId();
 	void   Resume();
+	void   Suspend();
 
-	void  EnterCriticalSection( CriticalSection & cs );
-	void  LeaveCriticalSection( CriticalSection & cs );
+	void SetName( const wchar_t * name );
+	const wchar_t * GetName() const;
 
 	struct Impl;
 	Impl * m_pImpl;
 
 	virtual void Run( void * params ) = 0;
 	virtual void OnTerminate() {}
-
-protected:
-	void Suspend();
 };
-
-
-
-struct csScopeThread {
-	csScopeThread( Thread & thread, CriticalSection & cs ) : thread(thread), cs(cs) {
-		thread.EnterCriticalSection( cs );
-	}
-	~csScopeThread() {
-		thread.LeaveCriticalSection( cs );
-	}
-private:
-	Thread & thread;
-	CriticalSection & cs;
-};
-
 
 
 struct csScope {

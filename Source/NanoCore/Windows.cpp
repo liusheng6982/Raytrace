@@ -208,7 +208,7 @@ int WindowMain::CreateMenu()
 
 void WindowMain::AddMenuItem( int menu, const wchar_t * pcName, int id )
 {
-	if( menu<0 || menu >= s_Menus.size())
+	if( menu<0 || menu >= (int)s_Menus.size())
 		return;
 	::AppendMenu( s_Menus[menu], MF_STRING, (UINT_PTR)id, pcName );
 	::DrawMenuBar( g_hWnd );
@@ -216,9 +216,9 @@ void WindowMain::AddMenuItem( int menu, const wchar_t * pcName, int id )
 
 void WindowMain::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
 {
-	if( menu<0 || menu >= s_Menus.size())
+	if( menu<0 || menu >= (int)s_Menus.size())
 		return;
-	if( submenu < 0 || submenu >= s_Menus.size())
+	if( submenu < 0 || submenu >= (int)s_Menus.size())
 		return;
 	::AppendMenu( s_Menus[menu], MF_STRING | MF_POPUP, (UINT_PTR)s_Menus[submenu], pcName );
 	::DrawMenuBar( g_hWnd );
@@ -274,11 +274,11 @@ static void CreateDialogElements( HWND hWnd )
 	for( auto it = pDialog->m_pImpl->items.begin(); it != pDialog->m_pImpl->items.end(); ++it, ++id ) {
 		char buf[64];
 		if( it->pStr )
-			strcpy( buf, it->pStr->c_str() );
+			strcpy_s( buf, it->pStr->c_str() );
 		else if( it->f )
-			sprintf( buf, "%0.4f", *it->f );
+			sprintf_s( buf, "%0.4f", *it->f );
 		else if( it->i )
-			sprintf( buf, "%d", *it->i );
+			sprintf_s( buf, "%d", *it->i );
 
 		CreateWindow( L"STATIC", it->name.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 10, y, 120, 20, hWnd, 0, g_hInstance, NULL );
 		it->hWnd = CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 130, y, 50, 20, hWnd, (HMENU)id, g_hInstance, NULL );
@@ -299,7 +299,7 @@ static void ReadDialogElements( WindowInputDialog * pDialog, HWND hWnd ) {
 		if( it->i ) {
 			*it->i = atol( buf );
 		} else if( it->f ) {
-			*it->f = atof( buf );
+			*it->f = (float)atof( buf );
 		} else if( it->pStr ) {
 			*it->pStr = buf;
 		}

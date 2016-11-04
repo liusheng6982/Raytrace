@@ -3,6 +3,7 @@
 #include <vector>
 
 using namespace std;
+using namespace NanoCore;
 
 
 enum {
@@ -18,8 +19,8 @@ struct FrustumCullJob : public IJob
 {
 	FrustumCullJob() : IJob( JOBTYPE_FRUSTUMCULL ) {}
 	virtual void Execute() {
-		ncSleep( 30 );
-		ncDebugOutput( "Frustum cull job on thread %X.\n", ncGetCurrentThreadId() );
+		Sleep( 30 );
+		DebugOutput( "Frustum cull job on thread %X.\n", GetCurrentThreadId() );
 	}
 };
 vector<FrustumCullJob> fcjobs(160);
@@ -28,8 +29,8 @@ struct CreateCBJob : public IJob
 {
 	CreateCBJob() : IJob( JOBTYPE_CREATECB ) {}
 	virtual void Execute() {
-		ncSleep( 10 );
-		ncDebugOutput( "CreateCB job on thread %X.\n", ncGetCurrentThreadId() );
+		Sleep( 10 );
+		DebugOutput( "CreateCB job on thread %X.\n", GetCurrentThreadId() );
 	}
 };
 vector<CreateCBJob> cbjobs(160);
@@ -38,8 +39,8 @@ struct RenderJob : public IJob
 {
 	RenderJob() : IJob( JOBTYPE_RENDERCB ) {}
 	virtual void Execute() {
-		ncSleep( 30 );
-		ncDebugOutput( "RenderCB job on thread %X.\n", ncGetCurrentThreadId() );
+		Sleep( 30 );
+		DebugOutput( "RenderCB job on thread %X.\n", GetCurrentThreadId() );
 	}
 };
 RenderJob rjob;
@@ -48,11 +49,11 @@ struct MergeCulledJob : public IJob
 {
 	MergeCulledJob() : IJob( JOBTYPE_MERGECULLED ) {}
 	virtual void Execute() {
-		ncSleep( 3 );
-		ncDebugOutput( "MergeCulled jobon thread %X.\n", ncGetCurrentThreadId() );
+		Sleep( 3 );
+		DebugOutput( "MergeCulled jobon thread %X.\n", GetCurrentThreadId() );
 		for( size_t i=0; i<cbjobs.size(); ++i )
-			GetFrame()->AddJob( &cbjobs[i] );
-		GetFrame()->AddJob( &rjob, JOBTYPE_CREATECB );
+			GetJobManager()->AddJob( &cbjobs[i] );
+		GetJobManager()->AddJob( &rjob, JOBTYPE_CREATECB );
 	}
 };
 MergeCulledJob mcjob;
@@ -62,11 +63,11 @@ struct MainJob : public IJob
 {
 	MainJob() : IJob( JOBTYPE_MAIN ) {}
 	virtual void Execute() {
-		ncSleep( 200 );
+		Sleep( 200 );
 		for( size_t i=0; i<fcjobs.size(); ++i )
-			GetFrame()->AddJob( &fcjobs[i] );
-		GetFrame()->AddJob( &mcjob, JOBTYPE_FRUSTUMCULL );
-		ncDebugOutput( "Main job on thread %X.\n", ncGetCurrentThreadId() );
+			GetJobManager()->AddJob( &fcjobs[i] );
+		GetJobManager()->AddJob( &mcjob, JOBTYPE_FRUSTUMCULL );
+		DebugOutput( "Main job on thread %X.\n", GetCurrentThreadId() );
 	}
 };
 MainJob mjob;
@@ -76,18 +77,13 @@ int main()
 {
 	IJobManager * jm = IJobManager::Create();
 	jm->Init( 0, JOBTYPE_MAX );
-	IJobFrame * jf = jm->CreateJobFrame();
 
-	jf->AddJob( &mjob );
-
+	jm->AddJob( &mjob );
 	while( jm->IsRunning() ) {
-		ncSleep( 5 );
+		Sleep( 5 );
 	}
+	jm->PrintStats();
 
-	jm->PrintStats( jf );
-
-	delete jf;
 	delete jm;
-
 	return 0;
 }

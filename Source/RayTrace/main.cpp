@@ -24,7 +24,7 @@ public:
 	void GetStatus( std::wstring & status ) {
 		if( m_bLoading && m_pLoader ) {
 			wchar_t buf[64];
-			swprintf( buf, L"Loading %d %%", m_pLoader->GetLoadingProgress());
+			swprintf( buf, 64, L"Loading %d %%", m_pLoader->GetLoadingProgress());
 			status += buf;
 		} else
 			status += L"Building KD-tree";
@@ -250,7 +250,7 @@ public:
 	}
 	void AddCurrentCamera() {
 		wchar_t w[128];
-		swprintf( w, L"Camera %d", m_Cameras.size()+1 );
+		swprintf( w, 128, L"Camera %d", m_Cameras.size()+1 );
 		AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + m_Cameras.size());
 		m_Cameras.push_back( m_Camera );
 	}
