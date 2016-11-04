@@ -10,6 +10,8 @@
 *.lastbuildstate
 *.lib
 *.ilk
+*.ipch
+*.sdf
 
 # Windows image file caches
 Thumbs.db
