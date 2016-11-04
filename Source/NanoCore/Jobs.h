@@ -1,6 +1,12 @@
 #ifndef __INC_NANOCORE_JOBS
 #define __INC_NANOCORE_JOBS
 
+/*
+	Each jobs can depend on 'type' (an integer constant) or be completely independent.
+	The typical use-case is to assign each job to a given type and then chart the dependencies between the types.
+	No individual job to job dependencies are supported for now.
+*/
+
 #include "Common.h"
 
 

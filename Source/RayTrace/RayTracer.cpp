@@ -210,6 +210,47 @@ void RenderTask::SetResolution( int w, int h )
 }
 */
 
+static void ComputeProgressiveDistribution( int size, std::vector<int> & order )
+{
+	bool *sq = new bool[size*size];
+	memset( sq, 0, size*size );
+
+	sq[0] = true;
+	order.clear();
+	order.reserve( size*size );
+	order.push_back( 0 );
+
+	for( int i=0; i<size*size; ++i ) {
+		int min_dist = 1000000000, mx, my;
+		for( int y=0; y<size; ++y )
+			for( int x=0; x<size; ++x ) {
+				if( sq[x + y*size] ) continue;
+
+				int min_dist = 1000000000;
+
+				for( int sy=0; sy<size; ++sy )
+					for( int sx=0; sx<size; ++sx ) {
+						if( !sq[sx + sy*size] ) continue;
+
+						int dx = (sx-x)*(sx-x), dx2 = (sx-size+x)*(sx-size+x), dx3 = (sx-size-x)*(sx-size-x);
+						if( dx > dx2 ) dx = dx2;
+						if( dx > dx3 ) dx = dx3;
+
+						int dy = (sy-y)*(sy-y), dy2 = (sy-size+y)*(sy-size+y), dy3 = (sy-size-y)*(sy-size-y);
+						if( dy > dy2 ) dy = dy2;
+						if( dy > dy3 ) dy = dy3;
+
+						int dist = dx + dy;
+						if( dist < min_dist ) {
+							min_dist = dist;
+						}
+					}
+			}
+		sq[mx + my*size] = true;
+		order.push_back( mx + my*size );
+	}
+}
+
 void Raytracer::RaytracePixel( int x, int y, int * pixel )
 {
 	RayInfo ri;
@@ -324,15 +365,66 @@ public:
 
 static std::vector<RaytraceJob> jobs;
 
+static std::vector<int> progressive_order;
+
+class ProgressiveRaytraceJob : public NanoCore::IJob {
+public:
+	int tile_x, tile_y, index;
+	Raytracer * pRaytracer;
+
+	ProgressiveRaytraceJob():IJob(0) {}
+
+	virtual void Execute() {
+		int tile_size = 1 << pRaytracer->m_ScreenTileSizePow2;
+		int order = progressive_order[index];
+		int x = tile_x * tile_size + order % tile_size;
+		int y = tile_y * tile_size + order / tile_size;
+
+		int rgb[3];
+		pRaytracer->RaytracePixel( x, y, rgb );
+		pRaytracer->m_pImage->SetPixel( x, y, rgb );
+
+		pRaytracer->m_PixelCompleteCount++;
+	}
+};
+
+static std::vector<ProgressiveRaytraceJob> prog_jobs;
+
+class ProgressiveNextWaveJob : public NanoCore::IJob {
+public:
+	ProgressiveNextWaveJob():IJob(1) {}
+	Raytracer * pRaytracer;
+	virtual void Execute();
+};
+
+static ProgressiveNextWaveJob prog_wave_job;
+
+void ProgressiveNextWaveJob::Execute() {
+	int max_index = 1 << pRaytracer->m_ScreenTileSizePow2;
+	int curr_order;
+	for( size_t i=0; i<prog_jobs.size(); ++i ) {
+		curr_order = ++prog_jobs[i].index;
+		s_pJobManager->AddJob( &prog_jobs[i] );
+	}
+	if( curr_order < max_index-1 )
+		s_pJobManager->AddJob( &prog_wave_job, 0 );
+}
+
+
+
+
+
 Raytracer::Raytracer()
 {
 	s_pJobManager = NanoCore::IJobManager::Create();
-	s_pJobManager->Init( 0, 1 );
+	s_pJobManager->Init( 0, 2 );
 	m_ScreenTileSizePow2 = 6;
 	m_Shading = ePreviewShading_ColoredCube;
 	m_SunSamples = 1;
 	m_SunDiskAngle = 0.52f;
 	m_GIBounces = 3;
+
+	ComputeProgressiveDistribution( 1 << m_ScreenTileSizePow2, progressive_order );
 }
 
 Raytracer::~Raytracer()
@@ -366,24 +458,41 @@ void Raytracer::Render()
 
 	int tw = m_pImage->GetWidth() / tileSize, th = m_pImage->GetHeight() / tileSize;
 
-	jobs.resize( tw*th*2 );
+	if( 1 ) {
+		prog_jobs.reserve( tw*th );
+		for( int y=0; y<th; ++y )
+			for( int x=0; x<tw; ++x ) {
+				ProgressiveRaytraceJob job;
+				job.tile_x = x;
+				job.tile_y = y;
+				job.index = 0;
+				job.pRaytracer = this;
+				job.SetType( 0 );
+				prog_jobs.push_back( job );
+			}
+		prog_wave_job.pRaytracer = this;
+		for( size_t i=0; i<prog_jobs.size(); ++i )
+			s_pJobManager->AddJob( &prog_jobs[i] );
+		s_pJobManager->AddJob(  &prog_wave_job, 0 );
+	} else {
+		jobs.resize( tw*th*2 );
+		for( int y=0; y<th; ++y )
+			for( int x=0; x<tw; ++x ) {
+				RaytraceJob j;
+				j.tile_x = x*tileSize;
+				j.tile_y = y*tileSize;
+				j.sizePow2_start = m_ScreenTileSizePow2;
+				j.sizePow2_end = m_ScreenTileSizePow2-3;
+				j.m_pRaytracer = this;
+				jobs[x+y*tw] = j;  // preview + detail raytrace job
 
-	for( int y=0; y<th; ++y )
-		for( int x=0; x<tw; ++x ) {
-			RaytraceJob j;
-			j.tile_x = x*tileSize;
-			j.tile_y = y*tileSize;
-			j.sizePow2_start = m_ScreenTileSizePow2;
-			j.sizePow2_end = m_ScreenTileSizePow2-3;
-			j.m_pRaytracer = this;
-			jobs[x+y*tw] = j;  // preview + detail raytrace job
-
-			j.sizePow2_start = m_ScreenTileSizePow2-4;
-			j.sizePow2_end = 0;
-			jobs[tw*th + (x+y*tw)] = j;
-		}
-	for( size_t i=0; i<jobs.size(); ++i )
-		s_pJobManager->AddJob( &jobs[i] );
+				j.sizePow2_start = m_ScreenTileSizePow2-4;
+				j.sizePow2_end = 0;
+				jobs[tw*th + (x+y*tw)] = j;
+			}
+		for( size_t i=0; i<jobs.size(); ++i )
+			s_pJobManager->AddJob( &jobs[i] );
+	}
 }
 
 bool Raytracer::IsRendering()
