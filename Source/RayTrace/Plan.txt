@@ -1,0 +1,29 @@
+- Scene options
+	- Save to file
+	- improve UI
+	- make color picker
+
+- NanoCore
+	- File class
+	- move Image here, make it load BMP/JPG
+	- move Camera here
+
+- Show more info
+	- kdtree structure
+	- job manager stats
+	- raytracing times
+
+- Textures
+	- parsing materials
+	- loading JPG / BMP files
+	- compute mipmaps
+	- find normalmap/gloss maps
+
+- KDtree optimization
+	- strip material info into separate structure (for better occlusion tests)
+	- more compact triangles
+
+- Raytracing
+	- produce BRDF for the glossy model we want - PBR, PDF, etc.
+	- GI bounces
+	- sun / sky colors and strengths (save to file)
