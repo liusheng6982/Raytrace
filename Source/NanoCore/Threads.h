@@ -86,5 +86,8 @@ void   GetSystemInfo( SystemInfo * pInfo );
 uint32 GetCurrentThreadId();
 std::wstring GetCurrentFolder();
 
+int32 AtomicInc( volatile int32 * ptr );
+int32 AtomicDec( volatile int32 * ptr );
+
 }
 #endif

@@ -5,129 +5,91 @@
 
 #define MAX_THREADS 32
 
+//#define Log NanoCore::DebugOutput
+#define Log
+
 
 
 namespace NanoCore {
 
 
 
-class JobManager;
-
 class WorkerThread : public Thread {
 public:
-	WorkerThread( JobManager * pJobManager ) : m_pActiveJob(NULL), m_pJobManager(pJobManager) {}
+	WorkerThread() : m_job(NULL) {}
 
 	virtual void Run( void* );
 
 private:
-	IJob * m_pActiveJob;
-	JobManager * m_pJobManager;
+	IJob * m_job;
 };
 
-class JobManager : public IJobManager {
-public:
-	JobManager();
-	virtual ~JobManager();
 
-	virtual void Init( int numThreads, int maxTypes );
-	virtual void AddJob( IJob * pJob, int typeToWait = -1 );
-	virtual void ClearPending();
-	virtual void Wait();
 
-	virtual bool IsRunning();
-	virtual void PrintStats();
 
-	void AddImmediateJobs( IJob ** p, int count );
-	IJob * GetSingleJob();
+void   AddImmediateJobs( IJob ** p, int count );
+IJob * GetSingleJob();
+void   ClearPending();
 
-	volatile int  m_jobsCount;
-	volatile bool m_bSuspendedThreads;
+static volatile int32 s_jobsCount;
+static volatile bool  s_bEnableJobs = true;
 
-	CriticalSection            m_csAvailable;
-	std::deque<IJob*>          m_available;
-	std::vector<WorkerThread*> m_threads;
-	int                        m_maxTypes;
+static CriticalSection            s_csAvailable;
+static std::deque<IJob*>          s_available;
+static std::vector<WorkerThread*> s_threads;
+static int                        s_maxTypes;
 
-	struct JobType {
-		volatile int count;
-		std::vector<IJob*> dependant_jobs;
-		CriticalSection cs;
-		JobType() : count(0) {}
-	};
-	JobType * m_pJobTypes;
+struct JobType {
+	volatile int32 count;
+	std::vector<IJob*> dependant_jobs;
+	CriticalSection cs;
+	JobType() : count(0) {}
 };
+static JobType * s_pJobTypes;
+
 
 
 void IJob::SetType( int type ) {
 	m_type = type;
 }
 
-void IJob::SetJobManager( IJobManager * ptr ) {
-	m_pJobManager = ptr;
-}
-
-
-void JobManager::AddJob( IJob * pJob, int typeToWait ) {
-	pJob->SetJobManager( this );
-	JobType * pJobType = m_pJobTypes + pJob->GetType();
-
-	//CriticalSectionScope cs( pJobType->cs );
-	pJobType->count++;
-
-	if( typeToWait == -1 ) {
-		AddImmediateJobs( &pJob, 1 );
-	} else {
-		csScope cs( m_pJobTypes[typeToWait].cs );
-		m_pJobTypes[typeToWait].dependant_jobs.push_back( pJob );
-		m_jobsCount++;
-	}
-}
-
 void WorkerThread::Run( void* ) {
-	DebugOutput( "Worker thread %X started.\n", this );
+	Log( "Worker thread %ls started.\n", GetName() );
 	for( ;; ) {
-		IJob * pJob = m_pJobManager->GetSingleJob();
+		IJob * pJob = GetSingleJob();
 		if( !pJob ) {
+			Log( "Worker thread %ls SUSPENDED.\n", GetName() );
 			Suspend();
-			//Sleep( 1 );
+			Log( "Worker thread %ls RESUMED.\n", GetName() );
 			continue;
 		}
-
-		m_pActiveJob = pJob;
+		m_job = pJob;
 		pJob->Execute();
 
 		const int type = pJob->GetType();
-		JobManager::JobType * ptr = &m_pJobManager->m_pJobTypes[type];
+		JobType * ptr = &s_pJobTypes[type];
 
 		{
-			csScope cs( ptr->cs );
-			if( --ptr->count == 0 ) {
+			int32 ret = AtomicDec( &ptr->count );
+			if( ret == 0 ) {
+				csScope cs( ptr->cs );
 				const int jc = ptr->dependant_jobs.size();
 				if( jc ) {
-					m_pJobManager->AddImmediateJobs( &ptr->dependant_jobs[0], jc );
+					AddImmediateJobs( &ptr->dependant_jobs[0], jc );
 					ptr->dependant_jobs.clear();
-					m_pJobManager->m_jobsCount -= jc;
 				}
 			}
 		}
-		csScope cs( m_pJobManager->m_csAvailable );
-		m_pJobManager->m_jobsCount--;
+		AtomicDec( &s_jobsCount );
 	}
 }
 
-JobManager::JobManager() : m_jobsCount( 0 ), m_pJobTypes(NULL) {
-}
-
-JobManager::~JobManager() {
-	for( size_t i=0; i<m_threads.size(); ++i )
-		delete m_threads[i];
-	delete[] m_pJobTypes;
-}
-
 void JobManager::Init( int numThreads, int maxTypes ) {
-	if( m_pJobTypes ) delete[] m_pJobTypes;
-	m_pJobTypes = new JobType[maxTypes];
-	m_maxTypes = maxTypes;
+	if( s_pJobTypes )
+		delete[] s_pJobTypes;
+	s_pJobTypes = new JobType[maxTypes];
+	s_maxTypes = maxTypes;
+	s_bEnableJobs = true;
 
 	if( numThreads <= 0 ) {
 		SystemInfo si;
@@ -138,68 +100,105 @@ void JobManager::Init( int numThreads, int maxTypes ) {
 		// warning
 	}
 	for( int i=0; i<numThreads; ++i ) {
-		WorkerThread * p = new WorkerThread( this );
-		m_threads.push_back( p );
+		WorkerThread * p = new WorkerThread();
+
+		wchar_t buf[64];
+		swprintf_s( buf, L"jmThread %d", i );
+		p->SetName( buf );
+
+		s_threads.push_back( p );
 		p->Start();
 	}
 }
 
+void JobManager::Done() {
+	for( size_t i=0; i<s_threads.size(); ++i )
+		delete s_threads[i];
+	delete[] s_pJobTypes;
+}
+
+void JobManager::AddJob( IJob * pJob, int typeToWait ) {
+	if( !s_bEnableJobs )
+		return;
+	JobType * pJobType = s_pJobTypes + pJob->GetType();
+
+	AtomicInc( &pJobType->count );
+	AtomicInc( &s_jobsCount );
+
+	if( typeToWait == -1 ) {
+		AddImmediateJobs( &pJob, 1 );
+	} else {
+		csScope cs( s_pJobTypes[typeToWait].cs );
+		if( s_pJobTypes[typeToWait].count == 0 )
+			AddImmediateJobs( &pJob, 1 );
+		else
+			s_pJobTypes[typeToWait].dependant_jobs.push_back( pJob );
+	}
+}
+
 bool JobManager::IsRunning() {
-	return m_jobsCount > 0;
+	return s_jobsCount > 0;
 }
 
-void JobManager::AddImmediateJobs( IJob ** p, int count ) {
-	csScope cs( m_csAvailable );
+void AddImmediateJobs( IJob ** p, int count ) {
+	csScope cs( s_csAvailable );
 	for( int i=0; i<count; ++i )
-		m_available.push_back( p[i] );
-	m_jobsCount += count;
-	for( int i=0, n=m_threads.size(); i<n; ++i )
-		m_threads[i]->Resume();
+		s_available.push_back( p[i] );
+	for( int i=0, n=s_threads.size(); i<n; ++i )
+		s_threads[i]->Resume();
 }
 
-IJob * JobManager::GetSingleJob() {
-	csScope cs( m_csAvailable );
-	if( m_available.empty())
+IJob * GetSingleJob() {
+	csScope cs( s_csAvailable );
+	if( s_available.empty())
 		return NULL;
-	IJob * p = m_available.front();
-	m_available.pop_front();
+	IJob * p = s_available.front();
+	s_available.pop_front();
 	return p;
 }
 
-void JobManager::ClearPending() {
-	for( int i=0; i<m_maxTypes; ++i ) {
-		csScope cs( m_pJobTypes[i].cs );
-		m_pJobTypes[i].dependant_jobs.clear();
-		m_pJobTypes[i].count = 0;
+void ClearPending() {
+	for( int i=0; i<s_maxTypes; ++i ) {
+		csScope cs( s_pJobTypes[i].cs );
+		s_pJobTypes[i].dependant_jobs.clear();
+		s_pJobTypes[i].count = 0;
 	}
-	csScope cs( m_csAvailable );
-	m_available.clear();
-	m_jobsCount = 0;
+	csScope cs( s_csAvailable );
+	s_available.clear();
+	s_jobsCount = 0;
 }
 
-void JobManager::Wait() {
+void JobManager::Wait( int flags ) {
+
+	if( flags & efDisableJobAddition )
+		s_bEnableJobs = false;
+	if( flags & efClearPendingJobs )
+		ClearPending();
+
 	while( true ) {
 		bool bRunning = false;
-		for( int i=0,n=m_threads.size(); i<n; ++i )
-			if( m_threads[i]->IsRunning()) bRunning = true;
-		if( bRunning || m_jobsCount ) {
+		for( int i=0,n=s_threads.size(); i<n; ++i )
+			if( s_threads[i]->IsRunning()) bRunning = true;
+		if( bRunning || s_jobsCount > 0 ) {
 			Sleep( 1 );
 		} else {
 			break;
 		}
 	}
+	for( int i=0; i<s_maxTypes; ++i ) {
+		s_pJobTypes[i].count = 0;
+		s_pJobTypes[i].dependant_jobs.clear();
+	}
+	s_jobsCount = 0;
+	s_bEnableJobs = true;
 }
 
 void JobManager::PrintStats() {
-	DebugOutput( "Job manager CS wait: %ld us\n", TickToMicroseconds( m_csAvailable.GetWaitTicks( CriticalSection::eWaitTick_Total )));
+	DebugOutput( "Job manager CS wait: %ld us\n", TickToMicroseconds( s_csAvailable.GetWaitTicks( CriticalSection::eWaitTick_Total )));
 	uint64 u = 0;
-	for( int i=0; i<m_maxTypes; ++i )
-		u += m_pJobTypes[i].cs.GetWaitTicks( CriticalSection::eWaitTick_Total );
+	for( int i=0; i<s_maxTypes; ++i )
+		u += s_pJobTypes[i].cs.GetWaitTicks( CriticalSection::eWaitTick_Total );
 	DebugOutput( "Job frame CS wait: %ld us\n", u );
-}
-
-IJobManager * IJobManager::Create() {
-	return new JobManager();
 }
 
 }

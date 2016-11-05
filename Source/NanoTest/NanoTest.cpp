@@ -75,7 +75,7 @@ MainJob mjob;
 
 int main()
 {
-	IJobManager * jm = IJobManager::Create();
+	JobManager * jm = JobManager::Create();
 	jm->Init( 0, JOBTYPE_MAX );
 
 	jm->AddJob( &mjob );

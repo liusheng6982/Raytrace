@@ -1,6 +1,8 @@
 #ifndef __INC_NANOCORE_JOBS
 #define __INC_NANOCORE_JOBS
 
+// FIXME: adding a dependant job, where the type it depends on doesn't present any task - it would hang up forever, since we consider dependent tasks only when parent task got finished
+
 /*
 	Each jobs can depend on 'type' (an integer constant) or be completely independent.
 	The typical use-case is to assign each job to a given type and then chart the dependencies between the types.
@@ -14,43 +16,36 @@
 namespace NanoCore {
 
 
-	
-class IJobManager;
-
-
 
 class IJob {
 public:
-	IJob( int type ) : m_pJobManager( NULL ), m_type( type ) {}
+	IJob( int type ) : m_type( type ) {}
 	virtual ~IJob() {}
 	virtual void Execute() = 0;
+	virtual const wchar_t * GetName() { return L"*IJob*"; }
 
 	int GetType() const { return m_type; }
 	void SetType( int type );
 
-	void SetJobManager( IJobManager * ptr );
-	IJobManager * GetJobManager() const { return m_pJobManager; }
-
 private:
 	int m_type;
-	IJobManager * m_pJobManager;
 };
 
 
 
-class IJobManager {
-public:
-	virtual ~IJobManager() {}
+struct JobManager {
+	enum {
+		efClearPendingJobs = 1,
+		efDisableJobAddition = 2,
+	};
 
-	virtual void Init( int numThreads, int maxTypes ) = 0;
-	virtual void AddJob( IJob * pJob, int typeToWait = -1 ) = 0;
-	virtual void ClearPending() = 0;  // remove all tasks, except the running ones
-	virtual void Wait() = 0;
-	virtual bool IsRunning() = 0;
+	static void Init( int numThreads, int maxTypes );
+	static void Done();
+	static void AddJob( IJob * pJob, int typeToWait = -1 );
+	static void Wait( int flags );
+	static bool IsRunning();
 
-	virtual void PrintStats() = 0;
-
-	static IJobManager * Create();
+	static void PrintStats();
 };
 
 

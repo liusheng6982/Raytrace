@@ -80,6 +80,7 @@ void Thread::Suspend() {
 	if( m_pImpl->hThread && GetId() == GetCurrentThreadId()) {
 		m_pImpl->bRunning = false;
 		::WaitForSingleObject( m_pImpl->hSuspendEvent, INFINITE );
+		m_pImpl->bRunning = true;
 	}
 }
 
@@ -87,7 +88,6 @@ void Thread::Resume() {
 	//assert( GetId() != GetCurrentThreadId() );
 	if( m_pImpl->hThread && !m_pImpl->bRunning ) {
 		::SetEvent( m_pImpl->hSuspendEvent );
-		m_pImpl->bRunning = true;
 	}
 }
 
@@ -164,7 +164,10 @@ uint64 TickToMicroseconds( uint64 ticks ) {
 	return ticks * 1000000 / li.QuadPart;
 }
 
+static CriticalSection csDebugOutput;
+
 void DebugOutput( const char * pcFormat, ... ) {
+	csScope cs( csDebugOutput );
 	char buf[2048];
 	va_list args;
 	va_start( args, pcFormat );
@@ -188,6 +191,14 @@ std::wstring GetCurrentFolder() {
 	wchar_t wPath[MAX_PATH];
 	::GetCurrentDirectory( MAX_PATH, wPath );
 	return std::wstring(wPath);
+}
+
+int32 AtomicInc( volatile int32 * ptr ) {
+	return ::InterlockedIncrement( ptr );
+}
+
+int32 AtomicDec( volatile int32 * ptr ) {
+	return ::InterlockedDecrement( ptr );
 }
 
 }

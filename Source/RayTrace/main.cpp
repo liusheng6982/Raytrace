@@ -160,7 +160,7 @@ public:
 				}
 				break;
 			case STATE_PREVIEW:
-				if( m_bInvalidate && !m_Raytracer.IsRendering()) {
+				if( m_bInvalidate ) {
 					m_Raytracer.Render();
 					m_bInvalidate = false;
 				}
@@ -308,7 +308,7 @@ int Main()
 	pWnd->SetStatus( NULL );
 
 	while( pWnd->Update()) {
-		NanoCore::Sleep( 10 );
+		NanoCore::Sleep( 20 );
 	}
 	delete pWnd;
 	return 0;
