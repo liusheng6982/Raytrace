@@ -317,13 +317,13 @@ void KDTree::Intersect( RayInfo & ray )
 		Intersect_r( 0, ray );
 }
 
-void RayInfo::Init( int x, int y, const Camera & cam )
+void RayInfo::Init( int x, int y, const Camera & cam, int width, int height )
 {
 	pos = cam.pos;
 	hitlen = 1000000000.f;
 	tri = 0;
-	float kx = (x*2.f/cam.width - 1) * tanf( cam.fovy * 0.5f ) * float(cam.width) / cam.height;
-	float ky = (y*2.f/cam.height - 1) * tanf( cam.fovy * 0.5f );
+	float kx = (x*2.f/width - 1) * tanf( cam.fovy * 0.5f ) * float(width) / height;
+	float ky = (y*2.f/height - 1) * tanf( cam.fovy * 0.5f );
 	dir = normalize( cam.at + cam.right * kx + cam.up * ky );
 }
 

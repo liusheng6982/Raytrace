@@ -224,8 +224,12 @@ void WindowMain::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
 	::DrawMenuBar( g_hWnd );
 }
 
+bool WindowMain::MessageBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel ) {
+	return ::MessageBox( g_hWnd, text, caption, bOkCancel ? MB_OKCANCEL : MB_OK ) == IDOK;
+}
+
 struct Item {
-	std::wstring name;
+	std::string name;
 	std::string * pStr;
 	float * f;
 	int * i;
@@ -253,17 +257,24 @@ WindowInputDialog::~WindowInputDialog()
 static std::map<HWND,WindowInputDialog*> s_wid;
 static WindowInputDialog * s_pWid;
 
-void WindowInputDialog::Add( const wchar_t * name, int & i ) {
+void WindowInputDialog::Add( const char * name, int & i ) {
 	Item it;
 	it.name = name;
 	it.i = &i;
 	m_pImpl->items.push_back( it );
 }
 
-void WindowInputDialog::Add( const wchar_t * name, float & f ) {
+void WindowInputDialog::Add( const char * name, float & f ) {
 	Item it;
 	it.name = name;
 	it.f = &f;
+	m_pImpl->items.push_back( it );
+}
+
+void WindowInputDialog::Add( const char * name, std::string & str ) {
+	Item it;
+	it.name = name;
+	it.pStr = &str;
 	m_pImpl->items.push_back( it );
 }
 
@@ -280,8 +291,8 @@ static void CreateDialogElements( HWND hWnd )
 		else if( it->i )
 			sprintf_s( buf, "%d", *it->i );
 
-		CreateWindow( L"STATIC", it->name.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 10, y, 120, 20, hWnd, 0, g_hInstance, NULL );
-		it->hWnd = CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 130, y, 50, 20, hWnd, (HMENU)id, g_hInstance, NULL );
+		CreateWindowA( "STATIC", it->name.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 10, y, 220, 20, hWnd, 0, g_hInstance, NULL );
+		it->hWnd = CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 230, y, 50, 20, hWnd, (HMENU)id, g_hInstance, NULL );
 		y += 20;
 	}
 	y += 20;

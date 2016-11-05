@@ -1,5 +1,12 @@
+- Windows
+	+ MessageBox
+	- common parent class 'Window'
+
++ Fine resolution rendering
++ Save rendered image to file
+
 - Scene options
-	- Save to file
+	+ Save to file
 	- improve UI
 	- make color picker
 
@@ -27,3 +34,5 @@
 	- produce BRDF for the glossy model we want - PBR, PDF, etc.
 	- GI bounces
 	- sun / sky colors and strengths (save to file)
+
+- NanoEngine!

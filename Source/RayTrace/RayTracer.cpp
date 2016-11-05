@@ -227,7 +227,7 @@ static void ComputeProgressiveDistribution( int size, std::vector<int> & order )
 void Raytracer::RaytracePixel( int x, int y, int * pixel )
 {
 	RayInfo ri;
-	ri.Init( x, y, *m_pCamera );
+	ri.Init( x, y, *m_pCamera, m_pImage->GetWidth(), m_pImage->GetHeight() );
 	m_pKDTree->Intersect( ri );
 
 	if( ri.tri ) {
@@ -263,10 +263,6 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
 				pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
 				pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
-
-				//pixel[0] = int(100 * shade + 155);
-				//pixel[1] = int(100 * shade + 155);
-				//pixel[2] = int(100 * shade + 155);
 				break;
 			case ePreviewShading_TriangleID: {
 				uint32 c = (uint32)ri.tri;
@@ -290,9 +286,6 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 	}
 }
 
-static NanoCore::JobManager * s_JM;
-
-
 static std::vector<int> progressive_order;
 
 class ProgressiveRaytraceJob : public NanoCore::IJob {
@@ -313,11 +306,12 @@ public:
 
 		JobsLog( "  prog[%d]: %d, %d, %d\n", id, tile_x, tile_y, index );
 
-		int rgb[3];
-		pRaytracer->RaytracePixel( x, y, rgb );
-		pRaytracer->m_pImage->SetPixel( x, y, rgb );
-
-		pRaytracer->m_PixelCompleteCount++;
+		if( x < pRaytracer->m_pImage->GetWidth() && y < pRaytracer->m_pImage->GetHeight()) {
+			int rgb[3];
+			pRaytracer->RaytracePixel( x, y, rgb );
+			pRaytracer->m_pImage->SetPixel( x, y, rgb );
+			pRaytracer->m_PixelCompleteCount++;
+		}
 	}
 };
 
@@ -360,6 +354,7 @@ Raytracer::Raytracer()
 	m_SunSamples = 1;
 	m_SunDiskAngle = 0.52f;
 	m_GIBounces = 3;
+	m_NumThreads = 3;
 
 	ComputeProgressiveDistribution( 1 << m_ScreenTileSizePow2, progressive_order );
 }
@@ -371,31 +366,33 @@ Raytracer::~Raytracer()
 
 void Raytracer::Stop()
 {
-	s_JM->Wait( NanoCore::JobManager::efClearPendingJobs | NanoCore::JobManager::efDisableJobAddition );
+	NanoCore::JobManager::Wait( NanoCore::JobManager::efClearPendingJobs | NanoCore::JobManager::efDisableJobAddition );
 }
 
-void Raytracer::Render()
+void Raytracer::Render( Camera & camera, Image & image, KDTree & kdTree )
 {
-	if( m_pKDTree->Empty())
+	if( kdTree.Empty())
 		return;
 
 	Stop();
 
-	int tileSize = 1 << m_ScreenTileSizePow2;
-	int w = m_pImage->GetWidth(), h = m_pImage->GetHeight();
-	if( w % tileSize || h % tileSize ) {
-		w += tileSize - w % tileSize;
-		h += tileSize - h % tileSize;
-		m_pImage->Init( w, h, 24 );
+	if( NanoCore::JobManager::GetNumThreads() != m_NumThreads ) {
+		NanoCore::JobManager::Done();
+		NanoCore::JobManager::Init( m_NumThreads, 2 );
 	}
-	m_pCamera->width = m_pImage->GetWidth();
-	m_pCamera->height = m_pImage->GetHeight();
+
+	m_pKDTree = &kdTree;
+	m_pImage = &image;
+	m_pCamera = &camera;
+
+	int tileSize = 1 << m_ScreenTileSizePow2;
+
 	m_pImage->Fill( 0 );
 
 	m_PixelCompleteCount = 0;
 	m_TotalPixelCount = m_pImage->GetWidth() * m_pImage->GetHeight();
 
-	int tw = m_pImage->GetWidth() / tileSize, th = m_pImage->GetHeight() / tileSize;
+	int tw = (m_pImage->GetWidth() + tileSize-1 ) / tileSize, th = (m_pImage->GetHeight() + tileSize - 1) / tileSize;
 
 	ProgJobs.clear();
 	ProgJobs.reserve( tw*th );
@@ -404,12 +401,12 @@ void Raytracer::Render()
 			ProgJobs.push_back( ProgressiveRaytraceJob( x, y, this, x + y*tw ));
 		}
 	SpawnProgJobsJob.pRaytracer = this;
-	s_JM->AddJob(  &SpawnProgJobsJob );
+	NanoCore::JobManager::AddJob( &SpawnProgJobsJob );
 }
 
 bool Raytracer::IsRendering()
 {
-	return s_JM->IsRunning();
+	return NanoCore::JobManager::IsRunning();
 }
 
 void Raytracer::GetStatus( std::wstring & status )

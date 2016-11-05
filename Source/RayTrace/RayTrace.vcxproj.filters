@@ -17,4 +17,7 @@
     <ClInclude Include="Image.h" />
     <ClInclude Include="RayTracer.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Plan.txt" />
+  </ItemGroup>
 </Project>

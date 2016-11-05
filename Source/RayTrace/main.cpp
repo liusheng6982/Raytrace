@@ -54,14 +54,15 @@ private:
 class MainWnd : public NanoCore::WindowMain
 {
 	const static int IDC_FILE_OPEN = 1001;
-	const static int IDC_FILE_EXIT = 1002;
-	const static int IDC_VIEW_CENTER_CAMERA = 1003;
-	const static int IDC_VIEW_CAPTURE_CURRENT_CAMERA = 1004;
-	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBE = 1100;
-	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED = 1101;
-	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1102;
-	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1103;
-	const static int IDC_VIEW_OPTIONS = 1005;
+	const static int IDC_FILE_SAVE_IMAGE = 1002;
+	const static int IDC_FILE_EXIT = 1003;
+	const static int IDC_VIEW_CENTER_CAMERA = 1100;
+	const static int IDC_VIEW_CAPTURE_CURRENT_CAMERA = 1101;
+	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBE = 1200;
+	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED = 1201;
+	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1202;
+	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1203;
+	const static int IDC_VIEW_OPTIONS = 1102;
 	const static int IDC_CAMERAS_FIRST = 2000;
 
 	enum EState {
@@ -70,44 +71,113 @@ class MainWnd : public NanoCore::WindowMain
 		STATE_RENDERING,
 	};
 
+	struct OptionItem {
+		std::string name;
+		int * i;
+		float * f;
+		std::string * str;
+		std::vector<std::string> combo;
+
+		OptionItem(){}
+		OptionItem( const char * name, int & i ) : name(name), i(&i), f(0), str(0) {}
+		OptionItem( const char * name, float & f ) : name(name), i(0), f(&f), str(0) {}
+		OptionItem( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
+	};
+	std::vector<OptionItem> m_OptionItems;
+	std::wstring m_wOptionsFile;
+
+	void PersistOptions( const std::wstring & wFile, bool bLoad ) {
+		FILE * fp = _wfopen( wFile.c_str(), bLoad ? L"rt" : L"wt" );
+		if( !fp )
+			return;
+
+		for( size_t i=0; i<m_OptionItems.size(); ++i ) {
+			OptionItem & it = m_OptionItems[i];
+			if( bLoad ) {
+				char buf[512] = "";
+				fgets( buf, 512, fp );
+
+				char * nl = strchr( buf, '\n' );
+				if( nl ) nl[0] = 0;
+				nl = strchr( buf, '\r' );
+				if( nl ) nl[0] = 0;
+
+				const char * p = strchr( buf, '=' );
+				if( p ) {
+					if( it.i )
+						*it.i = atol(p+1);
+					else if( it.f )
+						*it.f = (float)atof(p+1);
+					else
+						*it.str = p+1;
+				}
+			} else {
+				fprintf( fp, "%s=", it.name.c_str() );
+				if( it.i )
+					fprintf( fp, "%d\n", *it.i );
+				else if( it.f )
+					fprintf( fp, "%0.5f\n", *it.f );
+				else
+					fprintf( fp, "%s\n", it.str->c_str() );
+			}
+		}
+		fclose( fp );
+	}
+
 	class OptionsWnd : public NanoCore::WindowInputDialog {
 	public:
 		MainWnd & wnd;
 		OptionsWnd( MainWnd & wnd ) : wnd(wnd) {
-			Add( L"Preview resolution", wnd.m_PreviewResolution );
-			Add( L"GI bounces", wnd.m_Raytracer.m_GIBounces );
-			Add( L"Sun samples", wnd.m_Raytracer.m_SunSamples );
-			Add( L"Sun disk angle", wnd.m_Raytracer.m_SunDiskAngle );
+			for( size_t i=0; i<wnd.m_OptionItems.size(); ++i ) {
+				OptionItem & it = wnd.m_OptionItems[i];
+				if( it.i )
+					Add( it.name.c_str(), *it.i );
+				else if( it.f )
+					Add( it.name.c_str(), *it.f );
+				else if( it.str )
+					Add( it.name.c_str(), *it.str );
+			}
 		}
 	protected:
 		virtual void OnOK() {
 			wnd.m_Image.Init( wnd.m_PreviewResolution, wnd.m_PreviewResolution * wnd.GetHeight() / wnd.GetWidth(), 24 );
+			wnd.PersistOptions( wnd.m_wOptionsFile, false );
 		}
 	};
 
 public:
 	MainWnd() {
-		m_Raytracer.m_pKDTree = &m_KDTree;
-		m_Raytracer.m_pImage = &m_Image;
-		m_Raytracer.m_pCamera = &m_Camera;
 		m_bInvalidate = false;
 		m_State = STATE_PREVIEW;
 		m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
 		m_PreviewResolution = 200;
+
+		m_OptionItems.push_back( OptionItem( "Preview resolution", m_PreviewResolution ));
+		m_OptionItems.push_back( OptionItem( "Raytrace threads", m_Raytracer.m_NumThreads ));
+		m_OptionItems.push_back( OptionItem( "GI bounces", m_Raytracer.m_GIBounces ));
+		m_OptionItems.push_back( OptionItem( "Sun samples", m_Raytracer.m_SunSamples ));
+		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_Raytracer.m_SunDiskAngle ));
+
+		m_UpdateMs = 20;
 	}
 	~MainWnd() {
 	}
 	virtual void OnKey( int key ) {
 		switch( key ) {
-			case 80:
 			case 32:
-				if( !m_Raytracer.IsRendering())
-					m_Raytracer.Render();
+				if( m_State == STATE_PREVIEW ) {
+					m_State = STATE_RENDERING;
+					m_Image.Init( GetWidth(), GetHeight(), 24 );
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+				}
 				break;
 		}
 	}
 	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel )
 	{
+		if( m_State != STATE_PREVIEW )
+			return;
+
 		if( wheel ) {
 			m_Camera.pos += wheel>0 ? m_Camera.at : -m_Camera.at;
 			m_bInvalidate = true;
@@ -157,11 +227,15 @@ public:
 					SetStatus( NULL );
 					CenterCamera();
 					m_State = STATE_PREVIEW;
+					m_UpdateMs = 100;
 				}
 				break;
 			case STATE_PREVIEW:
 				if( m_bInvalidate ) {
-					m_Raytracer.Render();
+					if( m_Image.GetWidth() != m_PreviewResolution ) {
+						m_Image.Init( m_PreviewResolution, m_PreviewResolution * GetHeight() / GetWidth(), 24 );
+					}
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
 					m_bInvalidate = false;
 				}
 				Redraw();
@@ -172,8 +246,17 @@ public:
 					std::wstring str;
 					m_Raytracer.GetStatus( str );
 					SetStatus( str.c_str());
-				} else
-					SetStatus( NULL );
+					Redraw();
+				} else {
+					if( m_bInvalidate ) {
+						m_bInvalidate = false;
+						m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+					} else {
+						m_State = STATE_PREVIEW;
+						m_UpdateMs = 20;
+						SetStatus( NULL );
+					}
+				}
 				break;
 		}
 	}
@@ -185,6 +268,7 @@ public:
 		int previewMenu = CreateMenu();
 		AddSubmenu( mainMenu, L"File", fileMenu );
 			AddMenuItem( fileMenu, L"Open", IDC_FILE_OPEN );
+			AddMenuItem( fileMenu, L"Save image", IDC_FILE_SAVE_IMAGE );
 			AddMenuItem( fileMenu, L"Exit", IDC_FILE_EXIT );
 		AddSubmenu( mainMenu, L"View", viewMenu );
 			AddMenuItem( viewMenu, L"Center camera", IDC_VIEW_CENTER_CAMERA );
@@ -207,6 +291,9 @@ public:
 					m_State = STATE_LOADING;
 					LoadModel();
 				}
+				break;
+			case IDC_FILE_SAVE_IMAGE:
+				SaveImage();
 				break;
 			case IDC_FILE_EXIT:
 				m_Raytracer.Stop();
@@ -260,6 +347,16 @@ public:
 		if( !wFile.empty()) {
 			m_LoadingThread.Init( wFile, &m_KDTree );
 			m_LoadingThread.Start( NULL );
+
+			m_wOptionsFile = wFile + L".options.txt";
+			PersistOptions( m_wOptionsFile, true );
+		}
+	}
+	void SaveImage() {
+		std::wstring wFolder = NanoCore::GetCurrentFolder();
+		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Bitmap(*.bmp)\0*.bmp\0", L"Save image", false );
+		if( !wFile.empty()) {
+			m_Image.WriteAsBMP( wFile.c_str() );
 		}
 	}
 	void SetStatus( const wchar_t * pcStatus ) {
@@ -299,6 +396,7 @@ public:
 	Raytracer::EShading m_PreviewShading;
 	int             m_PreviewResolution;
 	std::auto_ptr<OptionsWnd> m_OptionsWnd;
+	int             m_UpdateMs;
 };
 
 int Main()
@@ -308,7 +406,7 @@ int Main()
 	pWnd->SetStatus( NULL );
 
 	while( pWnd->Update()) {
-		NanoCore::Sleep( 20 );
+		NanoCore::Sleep( pWnd->m_UpdateMs );
 	}
 	delete pWnd;
 	return 0;

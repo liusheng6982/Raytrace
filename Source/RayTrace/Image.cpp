@@ -28,16 +28,13 @@ void Image::Fill( uint32 color )
 		memset( m_pBuffer, 0, m_width*m_height*m_bpp/8 );
 }
 
-int Image::WriteAsBMP( const char * pcPathFileName )
-{
+int Image::WriteAsBMP( const wchar_t * name ) {
 	if( m_bpp != 24 )
 		return 0;
 
-	char pc[512];
-	strcpy_s( pc, pcPathFileName );
-	strcat_s( pc, ".bmp" );
-	FILE * fp = fopen( pc, "wb" );
-	if( !fp ) return 0;
+	FILE * fp = _wfopen( name, L"wb" );
+	if( !fp )
+		return 0;
 
 	char sig[2] = {'B','M'};
 	fwrite( sig, 1, 2, fp );

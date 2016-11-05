@@ -44,6 +44,7 @@ struct JobManager {
 	static void AddJob( IJob * pJob, int typeToWait = -1 );
 	static void Wait( int flags );
 	static bool IsRunning();
+	static int  GetNumThreads();
 
 	static void PrintStats();
 };

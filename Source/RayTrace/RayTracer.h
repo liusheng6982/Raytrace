@@ -11,11 +11,7 @@
 class Raytracer
 {
 public:
-	Image  * m_pImage;
-	Camera * m_pCamera;
-	KDTree * m_pKDTree;
-
-	int     m_ScreenTileSizePow2;
+	int m_ScreenTileSizePow2;
 
 	enum EShading {
 		ePreviewShading_ColoredCube,
@@ -27,7 +23,7 @@ public:
 	Raytracer();
 	~Raytracer();
 
-	void Render();
+	void Render( Camera & camera, Image & image, KDTree & kdTree );
 	bool IsRendering();
 	void Stop();
 
@@ -42,6 +38,11 @@ public:
 	int m_GIBounces;
 	int m_SunSamples;
 	float m_SunDiskAngle;
+	int m_NumThreads;
+
+	Image  * m_pImage;
+	Camera * m_pCamera;
+	KDTree * m_pKDTree;
 };
 
 #endif

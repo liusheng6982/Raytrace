@@ -193,6 +193,9 @@
     <ClInclude Include="ObjectFileLoader.h" />
     <ClInclude Include="RayTracer.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Plan.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

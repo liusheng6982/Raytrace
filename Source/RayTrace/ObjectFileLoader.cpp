@@ -41,6 +41,9 @@ public:
 	virtual int GetNumTriangles() {
 		return m_TriangleCount;
 	}
+	virtual Material * GetMaterial( int i ) {
+		return NULL;
+	}
 
 	void Save( const wchar_t * pwFilename );
 

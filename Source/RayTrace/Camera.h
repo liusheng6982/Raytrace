@@ -7,7 +7,6 @@ class Camera {
 public:
 	float3 pos, at,up,right;
 	float fovy;
-	int width, height;
 
 	float3 world_up;
 

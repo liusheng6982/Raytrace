@@ -114,7 +114,10 @@ void JobManager::Init( int numThreads, int maxTypes ) {
 void JobManager::Done() {
 	for( size_t i=0; i<s_threads.size(); ++i )
 		delete s_threads[i];
+	s_threads.clear();
 	delete[] s_pJobTypes;
+	s_pJobTypes = NULL;
+	s_available.clear();
 }
 
 void JobManager::AddJob( IJob * pJob, int typeToWait ) {
@@ -191,6 +194,10 @@ void JobManager::Wait( int flags ) {
 	}
 	s_jobsCount = 0;
 	s_bEnableJobs = true;
+}
+
+int JobManager::GetNumThreads() {
+	return (int)s_threads.size();
 }
 
 void JobManager::PrintStats() {

@@ -34,7 +34,7 @@ struct RayInfo
 
 	RayInfo() : hitlen(1000000.0f), tri(0) {}
 
-	void Init( int x, int y, const Camera & cam );
+	void Init( int x, int y, const Camera & cam, int width, int height );
 
 	void Clear() {
 		tri = NULL;

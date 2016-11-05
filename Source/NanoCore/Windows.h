@@ -38,6 +38,8 @@ public:
 	int CreateMenu();
 	void AddSubmenu( int menu, const wchar_t * pcName, int submenu );
 	void AddMenuItem( int menu, const wchar_t * pcName, int id );
+
+	static bool MessageBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel );
 };
 
 class WindowInputDialog {
@@ -53,10 +55,10 @@ public:
 	virtual void OnOK() {}
 
 protected:
-	void Add( const wchar_t * pName, std::string & str );
-	void Add( const wchar_t * name, float & f );
-	void Add( const wchar_t * name, int & i );
-	void Add( const wchar_t * pName, std::vector<std::wstring> & combo, int & item );
+	void Add( const char * name, std::string & str );
+	void Add( const char * name, float & f );
+	void Add( const char * name, int & i );
+	void Add( const char * name, std::vector<std::wstring> & combo, int & item );
 };
 
 }

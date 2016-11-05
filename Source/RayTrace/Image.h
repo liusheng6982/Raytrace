@@ -21,7 +21,7 @@ public:
 	void    GetPixel( int x, int y, int * pix );
 	void    SetPixel( int x, int y, int * pix );
 
-	int WriteAsBMP( const char * pcPathFileName );
+	int WriteAsBMP( const wchar_t * name );
 
 private:
 	int     m_width,m_height,m_bpp;
