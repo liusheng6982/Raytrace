@@ -201,4 +201,8 @@ int32 AtomicDec( volatile int32 * ptr ) {
 	return ::InterlockedDecrement( ptr );
 }
 
+int32 AtomicCompareAndSwap( volatile int32 * ptr, int32 compare, int32 swap ) {
+	return ::InterlockedCompareExchange( ptr, swap, compare );
+}
+
 }
