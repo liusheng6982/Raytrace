@@ -19,12 +19,13 @@ public:
 	void Leave();
 
 	enum EWaitTickType {
-		eWaitTick_Min,
-		eWaitTick_Max,
-		eWaitTick_Total,
-		eWaitTick_Average
+		eMin,
+		eMax,
+		eTotal,
+		eAverage
 	};
 	uint64 GetWaitTicks( EWaitTickType type );
+	void   ResetWaitTicks();
 
 private:
 	void operator = ( const CriticalSection & other ) {}
@@ -51,6 +52,9 @@ public:
 
 	void SetName( const wchar_t * name );
 	const wchar_t * GetName() const;
+
+	uint64 GetIdleTicks() const;
+	uint64 GetWorkTicks() const;
 
 	struct Impl;
 	Impl * m_pImpl;

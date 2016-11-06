@@ -2,6 +2,7 @@
 #include <NanoCore/Threads.h>
 #include "RayTracer.h"
 #include <stdlib.h>
+#include <NanoCore/File.h>
 
 //#define JobsLog NanoCore::DebugOutput
 #define JobsLog
@@ -404,17 +405,44 @@ void Raytracer::Render( Camera & camera, Image & image, KDTree & kdTree )
 	NanoCore::JobManager::AddJob( &SpawnProgJobsJob );
 }
 
-bool Raytracer::IsRendering()
-{
+bool Raytracer::IsRendering() {
 	return NanoCore::JobManager::IsRunning();
 }
 
-void Raytracer::GetStatus( std::wstring & status )
-{
+void Raytracer::GetStatus( std::wstring & status ) {
 	if( m_PixelCompleteCount < m_TotalPixelCount ) {
 		status += L" | ";
 		wchar_t buf[128];
 		swprintf( buf, 128, L"%d %%", m_PixelCompleteCount * 100 / m_TotalPixelCount );
 		status += buf;
+	}
+}
+
+static void LoadAsBmp( std::wstring path, std::string file, Image & img ) {
+	if( file.empty()) {
+		img.Clear();
+		return;
+	}
+	std::wstring wfile( file.begin(), file.end());
+	path += wfile;
+	NanoCore::FS::ReplaceExtension( path, L"bmp" );
+	img.Load( path.c_str());
+}
+
+void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
+	std::wstring path = NanoCore::FS::GetPath( loader.GetFilename() );
+	int num = loader.GetNumMaterials();
+	m_Materials.resize( num );
+	for( int i=0; i<num; ++i ) {
+		auto src = loader.GetMaterial(i);
+		auto & dst = m_Materials[i];
+		dst.Kd = src->Kd;
+		dst.Ks = src->Ks;
+		dst.Ke = src->Ke;
+		dst.Tr = src->Transparency;
+
+		LoadAsBmp( path, src->mapKd, dst.Md );
+		LoadAsBmp( path, src->mapKs, dst.Ms );
+		LoadAsBmp( path, src->mapBump, dst.Mb );
 	}
 }

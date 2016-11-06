@@ -46,6 +46,17 @@ struct JobManager {
 	static bool IsRunning();
 	static int  GetNumThreads();
 
+	enum EStats {
+		eNumThreads,
+		eNumJobs,
+		eThreadWorkTime,
+		eThreadIdleTime,
+		eCriticalSectionsWaitTime,
+	};
+
+	static void   ResetStats();
+	static uint64 GetStats( EStats stats );
+
 	static void PrintStats();
 };
 

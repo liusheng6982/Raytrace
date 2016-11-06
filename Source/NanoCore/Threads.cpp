@@ -18,7 +18,9 @@ struct Thread::Impl {
 	HANDLE hSuspendEvent;
 	std::wstring name;
 
-	Impl() : hThread(0), params(0), id(0), bRunning(false), hSuspendEvent(NULL) {}
+	uint64 idleTicks, workTicks, startTick;
+
+	Impl() : hThread(0), params(0), id(0), bRunning(false), hSuspendEvent(NULL), idleTicks(0), workTicks(0), startTick(0) {}
 };
 
 Thread::Thread() {
@@ -34,7 +36,9 @@ Thread::~Thread() {
 static DWORD WINAPI StartThreadProc( void * params ) {
 	Thread * pThread = (Thread*)params;
 	pThread->m_pImpl->bRunning = true;
+	pThread->m_pImpl->startTick = GetTicks();
 	pThread->Run( pThread->m_pImpl->params );
+	pThread->m_pImpl->workTicks += GetTicks() - pThread->m_pImpl->startTick;
 	pThread->m_pImpl->hThread = NULL;
 	pThread->m_pImpl->bRunning = false;
 	return 0;
@@ -79,7 +83,12 @@ void Thread::Wait() {
 void Thread::Suspend() {
 	if( m_pImpl->hThread && GetId() == GetCurrentThreadId()) {
 		m_pImpl->bRunning = false;
+		uint64 t1 = GetTicks();
+		m_pImpl->workTicks += t1 - m_pImpl->startTick;
 		::WaitForSingleObject( m_pImpl->hSuspendEvent, INFINITE );
+		uint64 t2 = GetTicks();
+		m_pImpl->idleTicks += t2 - t1;
+		m_pImpl->startTick = t2;
 		m_pImpl->bRunning = true;
 	}
 }
@@ -97,6 +106,14 @@ void Thread::SetName( const wchar_t * name ) {
 
 const wchar_t * Thread::GetName() const {
 	return m_pImpl->name.c_str();
+}
+
+uint64 Thread::GetIdleTicks() const {
+	return m_pImpl->idleTicks;
+}
+
+uint64 Thread::GetWorkTicks() const {
+	return m_pImpl->workTicks;
 }
 
 
@@ -138,12 +155,17 @@ void CriticalSection::Leave() {
 
 uint64 CriticalSection::GetWaitTicks( EWaitTickType type ) {
 	switch( type ) {
-		case eWaitTick_Min: return m_pImpl->min_ticks;
-		case eWaitTick_Max: return m_pImpl->max_ticks;
-		case eWaitTick_Total: return m_pImpl->total_ticks;
-		case eWaitTick_Average: return m_pImpl->num_calls ? m_pImpl->total_ticks / m_pImpl->num_calls : 0;
+		case eMin: return m_pImpl->min_ticks;
+		case eMax: return m_pImpl->max_ticks;
+		case eTotal: return m_pImpl->total_ticks;
+		case eAverage: return m_pImpl->num_calls ? m_pImpl->total_ticks / m_pImpl->num_calls : 0;
 	}
 	return 0;
+}
+
+void CriticalSection::ResetWaitTicks() {
+	m_pImpl->min_ticks = m_pImpl->max_ticks = m_pImpl->total_ticks = 0;
+	m_pImpl->num_calls = 0;
 }
 
 

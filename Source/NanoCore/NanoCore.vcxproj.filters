@@ -6,11 +6,13 @@
     <ClInclude Include="Common.h" />
     <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Windows.h" />
+    <ClInclude Include="File.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Windows.cpp" />
+    <ClCompile Include="File.cpp" />
   </ItemGroup>
 </Project>

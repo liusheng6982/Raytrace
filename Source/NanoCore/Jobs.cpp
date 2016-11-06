@@ -33,6 +33,7 @@ void   ClearPending();
 
 static volatile int32 s_jobsCount;
 static volatile bool  s_bEnableJobs = true;
+static volatile int32 s_numJobs = 0;
 
 static CriticalSection            s_csAvailable;
 static std::deque<IJob*>          s_available;
@@ -65,6 +66,8 @@ void WorkerThread::Run( void* ) {
 		}
 		m_job = pJob;
 		pJob->Execute();
+
+		AtomicInc( &s_numJobs );
 
 		const int type = pJob->GetType();
 		JobType * ptr = &s_pJobTypes[type];
@@ -200,11 +203,41 @@ int JobManager::GetNumThreads() {
 	return (int)s_threads.size();
 }
 
+void JobManager::ResetStats() {
+
+}
+
+uint64 JobManager::GetStats( EStats stats ) {
+	switch( stats ) {
+		case eNumThreads: return s_threads.size();
+		case eNumJobs: return s_numJobs;
+		case eThreadIdleTime: {
+			uint64 t=0;
+			for( size_t i=0; i<s_threads.size(); ++i )
+				t += s_threads[i]->GetIdleTicks();
+			return t;
+		}
+		case eThreadWorkTime: {
+			uint64 t=0;
+			for( size_t i=0; i<s_threads.size(); ++i )
+				t += s_threads[i]->GetWorkTicks();
+			return t;
+		}
+		case eCriticalSectionsWaitTime: {
+			uint64 t = s_csAvailable.GetWaitTicks( CriticalSection::eTotal );
+			for( int i=0; i<s_maxTypes; ++i )
+				t += s_pJobTypes[i].cs.GetWaitTicks( CriticalSection::eTotal );
+			return t;
+		}
+	}
+	return 0;
+}
+
 void JobManager::PrintStats() {
-	DebugOutput( "Job manager CS wait: %ld us\n", TickToMicroseconds( s_csAvailable.GetWaitTicks( CriticalSection::eWaitTick_Total )));
+	DebugOutput( "Job manager CS wait: %ld us\n", TickToMicroseconds( s_csAvailable.GetWaitTicks( CriticalSection::eTotal )));
 	uint64 u = 0;
 	for( int i=0; i<s_maxTypes; ++i )
-		u += s_pJobTypes[i].cs.GetWaitTicks( CriticalSection::eWaitTick_Total );
+		u += s_pJobTypes[i].cs.GetWaitTicks( CriticalSection::eTotal );
 	DebugOutput( "Job frame CS wait: %ld us\n", u );
 }
 

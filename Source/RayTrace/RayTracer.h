@@ -23,6 +23,7 @@ public:
 	Raytracer();
 	~Raytracer();
 
+	void LoadMaterials( IObjectFileLoader & loader );
 	void Render( Camera & camera, Image & image, KDTree & kdTree );
 	bool IsRendering();
 	void Stop();
@@ -43,6 +44,13 @@ public:
 	Image  * m_pImage;
 	Camera * m_pCamera;
 	KDTree * m_pKDTree;
+
+	struct Material {
+		Image Md, Ms, Mb;
+		float Tr;
+		float3 Kd, Ks, Ke;
+	};
+	std::vector<Material> m_Materials;
 };
 
 #endif

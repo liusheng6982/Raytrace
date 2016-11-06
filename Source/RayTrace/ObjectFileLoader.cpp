@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <vector>
+#include <map>
+#include <string>
+#include <NanoCore/File.h>
 #include "ObjectFileLoader.h"
 
 #define BUCKET_SIZE 1024
@@ -41,11 +44,15 @@ public:
 	virtual int GetNumTriangles() {
 		return m_TriangleCount;
 	}
-	virtual Material * GetMaterial( int i ) {
-		return NULL;
+	virtual const Material * GetMaterial( int i ) {
+		return &m_Materials[i];
+	}
+	virtual int GetNumMaterials() {
+		return m_Materials.size();
 	}
 
 	void Save( const wchar_t * pwFilename );
+	void LoadMaterialLibrary( const wchar_t * name );
 
 	template< typename T > void AddElement( T & el, vector<T*> & container, int & count ) {
 		if( count % BUCKET_SIZE == 0 )
@@ -59,13 +66,16 @@ public:
 		container.clear();
 	}
 
-	vector<float3*> m_Positions;
-	vector<float2*> m_UVs;
+	vector<float3*>   m_Positions;
+	vector<float2*>   m_UVs;
 	vector<Triangle*> m_Triangles;
+	vector<Material>  m_Materials;
+	map<string,int>   m_MaterialToIndex;
+
 	int m_PositionCount, m_UVCount, m_TriangleCount;
 	wstring m_wFilename;
 
-	mutable int m_Progress;
+	volatile int m_Progress;
 };
 
 
@@ -116,6 +126,58 @@ struct TextFileReadStream
 	}
 };
 
+static void TrimLineEnding( char * buf ) {
+	while( *buf ) {
+		if( *buf == '\n' || *buf == '\r' ) {
+			*buf = 0;
+			break;
+		} else
+			buf++;
+	}
+}
+
+void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
+	FILE * fp = _wfopen( name, L"rt" );
+	if( !fp )
+		return;
+
+	m_Materials.clear();
+
+	while( !feof( fp )) {
+		char buf[512];
+		fgets( buf, 512, fp );
+		strlwr( buf );
+		TrimLineEnding( buf );
+
+		const char * ptr;
+
+		Material * mtl = m_Materials.empty() ? NULL : &m_Materials.back();
+
+		if( !strncmp( buf, "newmtl", 6 )) {
+			m_MaterialToIndex[ buf+7 ] = m_Materials.size();
+			m_Materials.push_back(Material());
+		} else if( ptr = strstr( buf, "map_kd" ))
+			mtl->mapKd = ptr+7;
+		else if( ptr = strstr( buf, "map_ks" ))
+			mtl->mapKs = ptr+7;
+		else if( ptr = strstr( buf, "map_bump" ))
+			mtl->mapBump = ptr+9;
+		else if( ptr = strstr( buf, "bump" ))
+			mtl->mapBump = ptr+5;
+		else if( ptr = strstr( buf, "kd" ))
+			sscanf( ptr+3, "%f %f %f", &mtl->Kd.x, &mtl->Kd.y, &mtl->Kd.z );
+		else if( ptr = strstr( buf, "ks" ))
+			sscanf( ptr+3, "%f %f %f", &mtl->Ks.x, &mtl->Ks.y, &mtl->Ks.z );
+		else if( ptr = strstr( buf, "ke" ))
+			sscanf( ptr+3, "%f %f %f", &mtl->Ke.x, &mtl->Ke.y, &mtl->Ke.z );
+		else if( ptr = strstr( buf, "tr" ))
+			mtl->Transparency = (float)atof( buf+3 );
+		else if( ptr = strstr( buf, "ns" ))
+			mtl->Ns = (float)atof( ptr+3 );
+	}
+	fclose( fp );
+}
+
 bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 {
 	m_Progress = 0;
@@ -155,12 +217,25 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 
 	m_PositionCount = m_UVCount = m_TriangleCount = 0;
 
+	int materialID = 0;
+
 	char line[1024];
 	while( !f.EndOfFile()) {
 
 		f.ReadLine( line );
 
 		switch( line[0] ) {
+			case 'm':
+				if( !strnicmp( line, "mtllib ", 7 )) {
+					std::wstring name = NanoCore::FS::GetPath( pwFilename ) + NanoCore::FS::MbsToWcs( line + strlen( "mtllib " ));
+					LoadMaterialLibrary( name.c_str() );
+				}
+				break;
+			case 'u':
+				if( !strncmp( line, "usemtl ", 7 )) {
+					materialID = m_MaterialToIndex[line+7];
+				}
+				break;
 			case 'v':
 				if( line[1] == 't') {
 					float2 uv;
@@ -174,6 +249,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 				break;
 			case 'f': {
 				Triangle f;
+				f.material = materialID;
 				char * p = line+2;
 
 				bool bTexCoords = strchr( p, '/' ) != NULL;
@@ -253,4 +329,13 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename )
 IObjectFileLoader * IObjectFileLoader::Create()
 {
 	return new ObjectFileLoader();
+}
+
+IObjectFileLoader::Material::Material() {
+	Ns = 0.0f;
+	Transparency = 0.0f;
+	Ka = float3(0,0,0);
+	Kd = float3(0,0,0);
+	Ks = float3(0,0,0);
+	Ke = float3(0,0,0);
 }

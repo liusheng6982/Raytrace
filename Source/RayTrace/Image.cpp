@@ -6,24 +6,31 @@
 
 
 Image::Image() : m_pBuffer(NULL), m_width(0), m_height(0), m_bpp(0) {}
-Image::Image( int w, int h, int bpp )
-{
+
+Image::Image( int w, int h, int bpp ) {
 	Init( w, h, bpp );
 }
 
-void Image::Init( int w, int h, int bpp )
-{
+Image::Image( const Image & img ) : m_width(0), m_height(0), m_bpp(0), m_pBuffer(NULL) {
+	Init( img.m_width, img.m_height, img.m_bpp );
+	if( m_pBuffer )
+		memcpy( m_pBuffer, img.m_pBuffer, GetWidth()*GetHeight()*GetBitsPerPixel()/8 );
+}
+
+void Image::Init( int w, int h, int bpp ) {
 	if( bpp != 8 && bpp != 16 && bpp != 24 && bpp != 32 )
 		return;
 	delete[] m_pBuffer;
 	m_width = w;
 	m_height = h;
 	m_bpp = bpp;
-	m_pBuffer = new uint8[w*h*bpp/8];
+	if( w && h && bpp )
+		m_pBuffer = new uint8[w*h*bpp/8];
+	else
+		m_pBuffer = NULL;
 }
 
-void Image::Fill( uint32 color )
-{
+void Image::Fill( uint32 color ) {
 	if( m_pBuffer )
 		memset( m_pBuffer, 0, m_width*m_height*m_bpp/8 );
 }
@@ -64,13 +71,11 @@ int Image::WriteAsBMP( const wchar_t * name ) {
 	return 1;
 }
 
-uint8 * Image::GetImageAt( int x, int y )
-{
+uint8 * Image::GetImageAt( int x, int y ) {
 	return m_pBuffer ? m_pBuffer + (x + y*m_width)*m_bpp/8 : NULL;
 }
 
-void Image::GetPixel( int x, int y, int * out )
-{
+void Image::GetPixel( int x, int y, int * out ) {
 	uint8 * p = GetImageAt( x, y );
 	out[0] = p[0];
 	if( m_bpp > 8 ) {
@@ -93,15 +98,13 @@ void Image::SetPixel( int x, int y, int * pix ) {
 	}
 }
 
-static void Interpolate( int * p0, int * p1, int coef1kRange, int * result )
-{
+static void Interpolate( int * p0, int * p1, int coef1kRange, int * result ) {
 	result[0] = (p0[0]*(1024-coef1kRange) + p1[0]*coef1kRange) >> 10;
 	result[1] = (p0[1]*(1024-coef1kRange) + p1[1]*coef1kRange) >> 10;
 	result[2] = (p0[2]*(1024-coef1kRange) + p1[2]*coef1kRange) >> 10;
 }
 
-void Image::BilinearFilterRect( int x, int y, int w, int h )
-{
+void Image::BilinearFilterRect( int x, int y, int w, int h ) {
 	if( m_bpp != 24 )
 		return;
 
@@ -128,4 +131,50 @@ void Image::BilinearFilterRect( int x, int y, int w, int h )
 			SetPixel( x + xi, yi, pix );
 		}
 	}
+}
+
+bool Image::Load( const wchar_t * name ) {
+	FILE * fp = _wfopen( name, L"rb" );
+	if( !fp )
+		return false;
+
+	char sig[2] = {'B','M'};
+	fread( sig, 1, 2, fp );
+	if( sig[0] != 'B' || sig[1] != 'M' ) {
+		fclose( fp );
+		return false;
+	}
+
+	fseek( fp, 14, SEEK_SET );
+
+	BITMAPINFOHEADER bmpih;
+	fread( &bmpih, sizeof(bmpih), 1, fp );
+
+	if( bmpih.biBitCount != 24 || bmpih.biPlanes != 1 ) {
+		fclose( fp );
+		return false;
+	}
+
+	m_width = bmpih.biWidth;
+	m_height = bmpih.biHeight;
+
+	int pw = m_width*3;
+	if( pw % 4 ) pw += 4 - pw%4;
+	int pad = pw - m_width*3;
+
+	delete[] m_pBuffer;
+	m_pBuffer = new uint8[m_width*3*m_height];
+
+	for( int i=0; i<m_height; ++i ) {
+		fread( m_pBuffer + i*m_width*3, 1, m_width*3, fp );
+		fseek( fp, pad, SEEK_CUR );
+	}
+	fclose( fp );
+	return 1;
+}
+
+void Image::Clear() {
+	delete[] m_pBuffer;
+	m_pBuffer = NULL;
+	m_width = m_height = m_bpp = 0;
 }

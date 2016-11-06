@@ -16,10 +16,11 @@ class LoadingThread : public NanoCore::Thread
 {
 public:
 	LoadingThread() : m_pTree(NULL), m_pLoader(NULL) {}
-	void Init( std::wstring wFile, KDTree * pTree ) {
+	void Init( std::wstring wFile, KDTree * pTree, Raytracer * pRaytracer ) {
 		m_wFile = wFile;
 		m_pTree = pTree;
 		m_pLoader = NULL;
+		m_pRaytracer = pRaytracer;
 	}
 	void GetStatus( std::wstring & status ) {
 		if( m_bLoading && m_pLoader ) {
@@ -35,6 +36,7 @@ public:
 		m_pLoader->Load( m_wFile.c_str() );
 		m_bLoading = false;
 		m_pTree->Build( m_pLoader, 40 );
+		m_pRaytracer->LoadMaterials( *m_pLoader );
 		OnTerminate();
 	}
 	virtual void OnTerminate() {
@@ -48,6 +50,7 @@ private:
 	std::wstring m_wFile;
 	KDTree * m_pTree;
 	IObjectFileLoader * m_pLoader;
+	Raytracer * m_pRaytracer;
 	bool m_bLoading;
 };
 
@@ -345,7 +348,7 @@ public:
 		std::wstring wFolder = NanoCore::GetCurrentFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
 		if( !wFile.empty()) {
-			m_LoadingThread.Init( wFile, &m_KDTree );
+			m_LoadingThread.Init( wFile, &m_KDTree, &m_Raytracer );
 			m_LoadingThread.Start( NULL );
 
 			m_wOptionsFile = wFile + L".options.txt";
