@@ -12,7 +12,6 @@ namespace NanoCore {
 class File : public IFile {
 public:
 	virtual ~File();
-	virtual const wchar_t * GetName() { return m_Name.c_str(); }
 
 	virtual uint32 Read( void * ptr, uint32 size );
 	virtual uint32 Write( void * ptr, uint32 size );
@@ -20,8 +19,12 @@ public:
 	virtual void   Seek( uint64 pos );
 	virtual uint64 GetSize();
 
+	virtual const wchar_t * GetName() { return m_Name.c_str(); }
+	virtual int GetOpenMode() { return m_OpenMode; }
+
 	HANDLE m_hFile;
 	std::wstring m_Name;
+	int m_OpenMode;
 };
 
 static HANDLE CommonOpen( const wchar_t * name, int mode ) {
@@ -41,6 +44,7 @@ IFile * FS::Open( const char * name, int mode ) {
 	File * f = new File();
 	f->m_hFile = h;
 	f->m_Name = wname;
+	f->m_OpenMode= mode;
 	return f;
 }
 
@@ -51,6 +55,7 @@ IFile * FS::Open( const wchar_t * name, int mode ) {
 	File * f = new File();
 	f->m_hFile = h;
 	f->m_Name = name;
+	f->m_OpenMode= mode;
 	return f;
 }
 
@@ -87,6 +92,8 @@ File::~File() {
 	::CloseHandle( m_hFile );
 }
 
+
+
 TextFile::TextFile( IFile * file ) : m_pFile(file) {
 	m_pBuffer = new char[1024];
 	m_BufferSize = m_Position = 1024;
@@ -122,13 +129,17 @@ uint32 TextFile::ReadLine( char * buf, int maxSize ) {
 	}
 }
 
-uint32 TextFile::WriteLine( const char * fmt, ... ) {
+uint32 TextFile::Write( const char * fmt, ... ) {
 	char buf[2048];
 	va_list args;
 	va_start( args, fmt );
 	int len = vsprintf_s( buf, fmt, args );
 	va_end( args );
 	return (uint32)m_pFile->Write( buf, len );
+}
+
+int TextFile::GetOpenMode() {
+	return m_pFile->GetOpenMode();
 }
 
 std::wstring FS::GetPath( std::wstring wFilename ) {

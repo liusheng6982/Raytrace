@@ -3,6 +3,8 @@
 
 #include <NanoCore/Mathematics.h>
 
+
+
 class Camera {
 public:
 	float3 pos, at,up,right;
@@ -14,6 +16,8 @@ public:
 	void Orthonormalize();
 	void GetAxes( float3 & _at, float3 & _up, float3 & _right );
 	void Rotate( float pitch, float yaw );
+
+	void Serialize( NanoCore::XmlNode * node );
 };
 
 #endif

@@ -15,6 +15,7 @@ public:
 	virtual void   Seek( uint64 pos ) = 0;
 	virtual uint64 GetSize() = 0;
 	virtual const wchar_t * GetName() = 0;
+	virtual int GetOpenMode() = 0;
 };
 
 class TextFile {
@@ -24,7 +25,8 @@ public:
 
 	bool   EndOfFile();
 	uint32 ReadLine( char * buf, int maxSize );
-	uint32 WriteLine( const char * fmt, ... );
+	uint32 Write( const char * fmt, ... );
+	int    GetOpenMode();
 
 private:
 	IFile * m_pFile;

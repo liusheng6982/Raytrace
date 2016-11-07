@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include <NanoCore/Serialize.h>
 
 /*void Camera::GetAxes( float3 & _at, float3 & _up, float3 & _right )
 {
@@ -13,16 +14,14 @@ void Camera::Orthonormalize() {
 	up = normalize( cross( right, at ));
 }
 
-void Camera::LookAt( float3 lookat_pos, float3 at_vec )
-{
+void Camera::LookAt( float3 lookat_pos, float3 at_vec ) {
 	pos = lookat_pos - at_vec;
 	at = normalize( at_vec );
 	up = normalize( world_up );
 	Orthonormalize();
 }
 
-void Camera::Rotate( float pitch, float yaw )
-{
+void Camera::Rotate( float pitch, float yaw ) {
 	matrix m1, m2, m;
 	m1.setRotationAxis( world_up, yaw );
 
@@ -35,4 +34,18 @@ void Camera::Rotate( float pitch, float yaw )
 	at = m * at;
 	right = m * right;
 	up = m * up;
+}
+
+void Serialize( float3 & f, NanoCore::XmlNode * node ) {
+	node->SerializeAttrib( "x", f.x );
+	node->SerializeAttrib( "y", f.y );
+	node->SerializeAttrib( "z", f.z );
+}
+
+void Camera::Serialize( NanoCore::XmlNode * node ) {
+	::Serialize( pos, node->SerializeChild( "pos" ));
+	::Serialize( at, node->SerializeChild( "at" ));
+	::Serialize( up, node->SerializeChild( "up" ));
+	::Serialize( right, node->SerializeChild( "right" ));
+	::Serialize( world_up, node->SerializeChild( "world_up" ));
 }

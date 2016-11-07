@@ -20,4 +20,8 @@ typedef signed long long   int64;
 	#define assert(x)
 #endif
 
+namespace NanoCore {
+	class XmlNode;
+}
+
 #endif
