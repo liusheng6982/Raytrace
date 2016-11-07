@@ -129,6 +129,28 @@ uint32 TextFile::ReadLine( char * buf, int maxSize ) {
 	}
 }
 
+uint32 TextFile::ReadLine( std::string & line ) {
+	line.clear();
+	for( int i=0;; ++m_Position ) {
+		if( m_Position == m_BufferSize ) {
+			m_BufferSize = m_pFile->Read( m_pBuffer, 1024 );
+			m_Position = 0;
+			if( !m_BufferSize ) {
+				return line.size();
+			}
+		}
+		if( m_pBuffer[m_Position] == '\n' || m_pBuffer[m_Position] == '\r' ) {
+			if( i ) {
+				m_Position++;
+				return line.size();
+			}
+		} else {
+			line.push_back( m_pBuffer[m_Position] );
+			i++;
+		}
+	}
+}
+
 uint32 TextFile::Write( const char * fmt, ... ) {
 	char buf[2048];
 	va_list args;

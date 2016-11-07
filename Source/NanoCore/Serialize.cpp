@@ -1,4 +1,6 @@
+#include <stdarg.h>
 #include "Serialize.h"
+
 
 namespace NanoCore {
 
@@ -130,7 +132,7 @@ void XmlNode::SetAttribute( const char * name, int & i ) {
 	}
 }
 
-void XmlNode::SetAttribute( const char * name, std::string & s ) {
+void XmlNode::SetAttribute( const char * name, const char * s ) {
 	int idx = GetAttributeByName( name );
 	if( idx > 0 )
 		m_Attributes[idx].second  = s;
@@ -165,7 +167,10 @@ void XmlNode::Save( TextFile & tf ) {
 			tf.Write( "<%s", GetName());
 			for( int i=0; i<GetNumAttributes(); ++i )
 				tf.Write( " %s=\"%s\"", GetAttributeName( i ), GetAttributeValue( i ));
-			tf.Write( "/>\n" );
+			if( m_Value.empty())
+				tf.Write( "/>\n" );
+			else
+				tf.Write( ">%s</%s>\n", m_Value.c_str(), m_Name.c_str());
 	} else {
 		tf.Write( "<%s>\n", GetName());
 		for( int i=0; i<GetNumChildren(); ++i )
@@ -174,17 +179,102 @@ void XmlNode::Save( TextFile & tf ) {
 	}
 }
 
-void XmlNode::Load( TextFile & tf ) {
-	char buf[512];
-	tf.ReadLine( buf, 512 );
+char ReadNextCharacter( const char *& match ) {
+	char c = *match++;
+	if( c != '\\' )
+		return c;
+	return *match++;
+}
 
-	char * p = strchr( buf, '<' );
-	char * t = strchr( p, ' ' );
-	*t = 0;
+int PatternMatch( const char * buf, const char * match, ... )
+{
+	va_list args;
+	va_start( args, match );
 
-	SetName( p+1 );
+	int pos, j;
+	for( pos = 0; *match; ) {
+		char c = ReadNextCharacter( match );
+		if( c == '%' ) {
+			char sep = ReadNextCharacter( match );
+			for( j=0; buf[pos+j] && buf[pos+j] != sep; ++j );
+			std::string * dest = va_arg( args, std::string* );
+			dest->assign( buf+pos, j );
+			pos += j;
+			c = sep;
+		}
+		switch( *match ) {
+			case '*':
+				for( j=0; buf[pos+j] == c; ++j );
+				match++;
+				pos += j;
+				break;
+			case '+':
+				for( j=0; buf[pos+j] == c; ++j );
+				if( !j )
+					return 0;
+				match++;
+				pos += j;
+				break;
+			default:
+				if( buf[pos] != c ) return 0;
+				pos++;
+				break;
+		}
+	}
+	va_end( args );
+	return pos;
+}
 
 
+
+bool XmlNode::Load( TextFile & tf, const char * line ) {
+
+	std::string str;
+
+	if( !line ) {
+		tf.ReadLine( str );
+		line = &str[0];
+	}
+
+	std::string tag;
+	int l, n;
+
+	if( l = PatternMatch( line, " *<% ", &m_Name )) {
+		std::string attr, val;
+		for( ;; ) {
+			if( n = PatternMatch( line+l, " *%=\"%\"", &attr, &val )) {
+				l += n;
+				SetAttribute( attr.c_str(), val.c_str() );
+			} else if( PatternMatch( line+l, " *>" )) {
+				break;
+			} else if( PatternMatch( line+l, " */>" )) {
+				return true;
+			}
+		}
+	} else if( l = PatternMatch( line, " *<%>", &m_Name )) {
+	} else {
+		return false;
+	}
+
+	if( PatternMatch( line+l, "%</%>", &m_Value, tag ))
+		return true;
+
+	for( ;; ) {
+		tf.ReadLine( str );
+		if( PatternMatch( str.c_str(), " *</%>", tag ))
+			return true;
+		XmlNode * child = new XmlNode();
+		if( !child->Load( tf, str.c_str() )) {
+			delete child;
+			return false;
+		}
+		AddChild( child );
+	}
+	return true;
+}
+
+bool XmlNode::Load( TextFile & tf ) {
+	return Load( tf, NULL );
 }
 
 

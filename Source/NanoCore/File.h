@@ -25,6 +25,7 @@ public:
 
 	bool   EndOfFile();
 	uint32 ReadLine( char * buf, int maxSize );
+	uint32 ReadLine( std::string & line );
 	uint32 Write( const char * fmt, ... );
 	int    GetOpenMode();
 

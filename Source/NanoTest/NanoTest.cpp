@@ -1,5 +1,6 @@
 #include <NanoCore/Threads.h>
 #include <NanoCore/Jobs.h>
+#include <NanoCore/Serialize.h>
 #include <vector>
 
 using namespace std;
@@ -52,8 +53,8 @@ struct MergeCulledJob : public IJob
 		Sleep( 3 );
 		DebugOutput( "MergeCulled jobon thread %X.\n", GetCurrentThreadId() );
 		for( size_t i=0; i<cbjobs.size(); ++i )
-			GetJobManager()->AddJob( &cbjobs[i] );
-		GetJobManager()->AddJob( &rjob, JOBTYPE_CREATECB );
+			JobManager::AddJob( &cbjobs[i] );
+		JobManager::AddJob( &rjob, JOBTYPE_CREATECB );
 	}
 };
 MergeCulledJob mcjob;
@@ -65,8 +66,8 @@ struct MainJob : public IJob
 	virtual void Execute() {
 		Sleep( 200 );
 		for( size_t i=0; i<fcjobs.size(); ++i )
-			GetJobManager()->AddJob( &fcjobs[i] );
-		GetJobManager()->AddJob( &mcjob, JOBTYPE_FRUSTUMCULL );
+			JobManager::AddJob( &fcjobs[i] );
+		JobManager::AddJob( &mcjob, JOBTYPE_FRUSTUMCULL );
 		DebugOutput( "Main job on thread %X.\n", GetCurrentThreadId() );
 	}
 };
@@ -75,15 +76,18 @@ MainJob mjob;
 
 int main()
 {
-	JobManager * jm = JobManager::Create();
-	jm->Init( 0, JOBTYPE_MAX );
+	std::string name, attr, attr_val;
+	if( PatternMatch( "   <name x=\"5\"  />", "\\s*<%\\s+%=\"%\"\\s*/\\s*>", &name, &attr, &attr_val )) {
+		printf( "Match!\n\tname = %s\n\tattribute = %s\n\tvalue = %s\n", name.c_str(), attr.c_str(), attr_val.c_str() );
+	} else {
+		printf( "Not matched!" );
+	}
 
-	jm->AddJob( &mjob );
-	while( jm->IsRunning() ) {
+	JobManager::Init( 0, JOBTYPE_MAX );
+	JobManager::AddJob( &mjob );
+	while( JobManager::IsRunning() ) {
 		Sleep( 5 );
 	}
-	jm->PrintStats();
-
-	delete jm;
+	JobManager::PrintStats();
 	return 0;
 }
