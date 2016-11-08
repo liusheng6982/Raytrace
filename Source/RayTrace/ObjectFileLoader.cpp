@@ -33,13 +33,13 @@ public:
 		return m_Progress;
 	}
 	virtual const float3 * GetVertexPos( int i ) {
-		return (i < m_PositionCount) ? &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+		return (i >= 0 && i < m_PositionCount) ? &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
 	virtual const float2 * GetVertexUV( int i ) {
-		return (i < m_UVCount) ? &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+		return (i >= 0 && i < m_UVCount) ? &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
 	virtual const Triangle * GetTriangle( int i ) {
-		return (i < m_TriangleCount) ? &m_Triangles[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+		return (i >= 0 && i < m_TriangleCount) ? &m_Triangles[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
 	virtual int GetNumTriangles() {
 		return m_TriangleCount;
@@ -262,6 +262,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 					} else {
 						if( sscanf( p, "%d", f.pos + i ) != 1 )
 							break;
+						f.uv[0] = f.uv[1] = f.uv[2] = -1;
 					}
 
 					if( f.pos[i] > 0 )
