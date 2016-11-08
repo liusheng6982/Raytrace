@@ -12,28 +12,16 @@ int PatternMatch( const char * buffer, const char * match, ... );
 
 class XmlNode {
 public:
-	enum EDataType {
-		edtFloat,
-		edtInt,
-		edtString
-	};
-
 	XmlNode();
 	XmlNode( const char * name );
 	~XmlNode();
 
-	void SerializeAttrib( const char * name, float & f ) {
-		if( !GetAttribute( name, f ))
-			SetAttribute( name, f );
+	template< typename T >
+	void SerializeAttrib( const char * name, T & x ) {
+		if( !GetAttribute( name, x ))
+			SetAttribute( name, x );
 	}
-	XmlNode * SerializeChild( const char * name ) {
-		XmlNode * p = GetChild( name );
-		if( p )
-			return p;
-		p = new XmlNode( name );
-		AddChild( p );
-		return p;
-	}
+	XmlNode * SerializeChild( const char * name );
 
 	const char * GetName();
 	bool GetAttribute( const char * name, float & f );

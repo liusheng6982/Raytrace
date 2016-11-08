@@ -89,7 +89,7 @@ XmlNode * XmlNode::GetChild( int idx ) {
 
 XmlNode * XmlNode::GetChild( const char * name ) {
 	for( size_t i=0, n=m_Children.size(); i<n; ++i )
-		if( m_Children[i]->GetName() == name )
+		if( !strcmp( m_Children[i]->GetName(), name ))
 			return m_Children[i];
 	return NULL;
 }
@@ -164,13 +164,13 @@ void XmlNode::DeleteChild( int idx ) {
 
 void XmlNode::Save( TextFile & tf ) {
 	if( !GetNumChildren()) {
-			tf.Write( "<%s", GetName());
-			for( int i=0; i<GetNumAttributes(); ++i )
-				tf.Write( " %s=\"%s\"", GetAttributeName( i ), GetAttributeValue( i ));
-			if( m_Value.empty())
-				tf.Write( "/>\n" );
-			else
-				tf.Write( ">%s</%s>\n", m_Value.c_str(), m_Name.c_str());
+		tf.Write( "<%s", GetName());
+		for( int i=0; i<GetNumAttributes(); ++i )
+			tf.Write( " %s=\"%s\"", GetAttributeName( i ), GetAttributeValue( i ));
+		if( m_Value.empty())
+			tf.Write( "/>\n" );
+		else
+			tf.Write( ">%s</%s>\n", m_Value.c_str(), m_Name.c_str());
 	} else {
 		tf.Write( "<%s>\n", GetName());
 		for( int i=0; i<GetNumChildren(); ++i )
@@ -179,7 +179,7 @@ void XmlNode::Save( TextFile & tf ) {
 	}
 }
 
-char ReadNextCharacter( const char *& match ) {
+static char ReadNextCharacter( const char *& match ) {
 	char c = *match++;
 	if( c != '\\' )
 		return c;
@@ -228,14 +228,11 @@ int PatternMatch( const char * buf, const char * match, ... )
 
 
 bool XmlNode::Load( TextFile & tf, const char * line ) {
-
 	std::string str;
-
 	if( !line ) {
 		tf.ReadLine( str );
 		line = &str[0];
 	}
-
 	std::string tag;
 	int l, n;
 
@@ -252,16 +249,17 @@ bool XmlNode::Load( TextFile & tf, const char * line ) {
 			}
 		}
 	} else if( l = PatternMatch( line, " *<%>", &m_Name )) {
+
 	} else {
 		return false;
 	}
 
-	if( PatternMatch( line+l, "%</%>", &m_Value, tag ))
+	if( PatternMatch( line+l, "%</%>", &m_Value, &tag ))
 		return true;
 
 	for( ;; ) {
 		tf.ReadLine( str );
-		if( PatternMatch( str.c_str(), " *</%>", tag ))
+		if( PatternMatch( str.c_str(), " *</%>", &tag ))
 			return true;
 		XmlNode * child = new XmlNode();
 		if( !child->Load( tf, str.c_str() )) {
@@ -275,6 +273,15 @@ bool XmlNode::Load( TextFile & tf, const char * line ) {
 
 bool XmlNode::Load( TextFile & tf ) {
 	return Load( tf, NULL );
+}
+
+XmlNode * XmlNode::SerializeChild( const char * name ) {
+	XmlNode * p = GetChild( name );
+	if( p )
+		return p;
+	p = new XmlNode( name );
+	AddChild( p );
+	return p;
 }
 
 

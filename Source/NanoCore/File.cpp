@@ -50,7 +50,7 @@ IFile * FS::Open( const char * name, int mode ) {
 
 IFile * FS::Open( const wchar_t * name, int mode ) {
 	HANDLE h = CommonOpen( name, mode );
-	if( !h )
+	if( h == INVALID_HANDLE_VALUE )
 		return NULL;
 	File * f = new File();
 	f->m_hFile = h;
