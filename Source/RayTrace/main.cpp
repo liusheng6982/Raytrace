@@ -201,6 +201,9 @@ public:
 			m_Camera.Rotate( (dragY - y) * 3.1415f / 200.0f, (x - dragX) * 3.1415f / 200.0f );
 			m_bInvalidate = true;
 		}
+		if( btn_down & 2 ) {
+			RightClick( x, y );
+		}
 	}
 	virtual void OnSize( int w, int h )
 	{
@@ -335,6 +338,20 @@ public:
 				break;
 		}
 	}
+	void RightClick( int x, int y ) {
+		RayInfo ri;
+		ri.Init( x, GetHeight() - y, m_Camera, GetWidth(), GetHeight() );
+		m_KDTree.Intersect( ri );
+
+		NanoCore::DebugOutput( "Triangle picker:\n" );
+		if( ri.tri ) {
+			NanoCore::DebugOutput( "  triangleID: %d\n\n", ri.tri->triangleID );
+			m_Raytracer.m_SelectedTriangle = ri.tri->triangleID;
+		} else {
+			m_Raytracer.m_SelectedTriangle = -1;
+		}
+		m_bInvalidate = true;
+	}
 	void AddCurrentCamera() {
 		wchar_t w[128];
 		swprintf( w, 128, L"Camera %d", m_Cameras.size()+1 );
@@ -380,7 +397,7 @@ public:
 		}
 	}
 	void LoadModel() {
-		std::wstring wFolder = NanoCore::GetCurrentFolder();
+		std::wstring wFolder = NanoCore::GetExecutableFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
 		if( !wFile.empty()) {
 			m_LoadingThread.Init( wFile, &m_KDTree, &m_Raytracer );

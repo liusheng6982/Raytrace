@@ -2,7 +2,7 @@
 #define ___INC_NANOCORE_FILE
 
 #include "Common.h"
-#include <string>
+#include "String.h"
 
 namespace NanoCore {
 
@@ -44,12 +44,6 @@ namespace FS {
 
 	IFile * Open( const wchar_t * name, int mode );
 	IFile * Open( const char * name, int mode );
-
-	std::wstring GetPath( std::wstring wFilename );
-	std::wstring GetExtension( std::wstring wFilename );
-	void ReplaceExtension( std::wstring & file, const wchar_t * newext );
-
-	std::wstring MbsToWcs( const char * str );
 }
 
 }

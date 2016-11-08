@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "Threads.h"
-
+#include "String.h"
 
 
 namespace NanoCore {
@@ -213,6 +213,21 @@ std::wstring GetCurrentFolder() {
 	wchar_t wPath[MAX_PATH];
 	::GetCurrentDirectory( MAX_PATH, wPath );
 	return std::wstring(wPath);
+}
+
+std::wstring GetExecutableFolder() {
+	CriticalSection cs;
+	csScope scope( cs );
+
+	static std::wstring folder;
+	if( folder.empty()) {
+		HMODULE hModule = ::GetModuleHandleW( NULL );
+		wchar_t path[MAX_PATH];
+		GetModuleFileNameW( hModule, path, MAX_PATH );
+		folder = path;
+		folder = StrGetPath( folder );
+	}
+	return folder;
 }
 
 int32 AtomicInc( volatile int32 * ptr ) {

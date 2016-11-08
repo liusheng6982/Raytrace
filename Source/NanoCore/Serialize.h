@@ -8,8 +8,6 @@
 
 namespace NanoCore {
 
-int PatternMatch( const char * buffer, const char * match, ... );
-
 class XmlNode {
 public:
 	XmlNode();

@@ -8,6 +8,7 @@
     <ClInclude Include="Windows.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="Serialize.h" />
+    <ClInclude Include="String.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Threads.cpp" />
@@ -16,5 +17,6 @@
     <ClCompile Include="Windows.cpp" />
     <ClCompile Include="File.cpp" />
     <ClCompile Include="Serialize.cpp" />
+    <ClCompile Include="String.cpp" />
   </ItemGroup>
 </Project>

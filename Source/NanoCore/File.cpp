@@ -164,27 +164,4 @@ int TextFile::GetOpenMode() {
 	return m_pFile->GetOpenMode();
 }
 
-std::wstring FS::GetPath( std::wstring wFilename ) {
-	size_t k = wFilename.find_last_of( L'/' );
-	if( k == std::wstring::npos ) k = wFilename.find_last_of( L'\\' );
-	if( k != std::wstring::npos ) wFilename.erase( k+1 );
-	return wFilename;
-}
-
-void FS::ReplaceExtension( std::wstring & file, const wchar_t * newext ) {
-	size_t k = file.find_last_of( L'.' );
-	if( k != std::wstring::npos ) {
-		file.erase( k+1 );
-		file += newext;
-	} else {
-		file += L".";
-		file += newext;
-	}
-}
-
-std::wstring FS::MbsToWcs( const char * str ) {
-	std::wstring s( str, str + strlen(str) );
-	return s;
-}
-
 }

@@ -41,6 +41,8 @@ public:
 	float m_SunDiskAngle;
 	int m_NumThreads;
 
+	int m_SelectedTriangle;
+
 	Image  * m_pImage;
 	Camera * m_pCamera;
 	KDTree * m_pKDTree;

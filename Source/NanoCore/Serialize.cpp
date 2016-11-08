@@ -1,11 +1,13 @@
-#include <stdarg.h>
 #include "Serialize.h"
+#include "String.h"
+
 
 
 namespace NanoCore {
 
 
-#define CHECK_RANGE( vec, idx, ret ) if( idx < 0 || idx >= vec.size()) return ret;
+
+#define CHECK_RANGE( vec, idx, ret ) if( idx < 0 || idx >= (int)vec.size()) return ret;
 
 XmlNode::XmlNode() {
 }
@@ -125,13 +127,13 @@ void XmlNode::SetName( const char * name ) {
 
 static void Str( float f, std::string & s ) {
 	char buf[64];
-	sprintf( buf, "%0.4f", f );
+	sprintf_s( buf, "%0.4f", f );
 	s = buf;
 }
 
 static void Str( int i, std::string & s ) {
 	char buf[64];
-	sprintf( buf, "%d", i );
+	sprintf_s( buf, "%d", i );
 	s = buf;
 }
 
@@ -204,54 +206,6 @@ void XmlNode::Save( TextFile & tf ) {
 	}
 }
 
-static char ReadNextCharacter( const char *& match ) {
-	char c = *match++;
-	if( c != '\\' )
-		return c;
-	return *match++;
-}
-
-int PatternMatch( const char * buf, const char * match, ... )
-{
-	va_list args;
-	va_start( args, match );
-
-	int pos, j;
-	for( pos = 0; *match; ) {
-		char c = ReadNextCharacter( match );
-		if( c == '%' ) {
-			char sep = ReadNextCharacter( match );
-			for( j=0; buf[pos+j] && buf[pos+j] != sep; ++j );
-			std::string * dest = va_arg( args, std::string* );
-			dest->assign( buf+pos, j );
-			pos += j;
-			c = sep;
-		}
-		switch( *match ) {
-			case '*':
-				for( j=0; buf[pos+j] == c; ++j );
-				match++;
-				pos += j;
-				break;
-			case '+':
-				for( j=0; buf[pos+j] == c; ++j );
-				if( !j )
-					return 0;
-				match++;
-				pos += j;
-				break;
-			default:
-				if( buf[pos] != c ) return 0;
-				pos++;
-				break;
-		}
-	}
-	va_end( args );
-	return pos;
-}
-
-
-
 bool XmlNode::Load( TextFile & tf, const char * line ) {
 	std::string str;
 	if( !line ) {
@@ -261,30 +215,30 @@ bool XmlNode::Load( TextFile & tf, const char * line ) {
 	std::string tag;
 	int l, n;
 
-	if( l = PatternMatch( line, " *<% ", &m_Name )) {
+	if( l = StrPatternMatch( line, " *<% ", &m_Name )) {
 		std::string attr, val;
 		for( ;; ) {
-			if( n = PatternMatch( line+l, " *%=\"%\"", &attr, &val )) {
+			if( n = StrPatternMatch( line+l, " *%=\"%\"", &attr, &val )) {
 				l += n;
 				SetAttribute( attr.c_str(), val.c_str() );
-			} else if( PatternMatch( line+l, " *>" )) {
+			} else if( StrPatternMatch( line+l, " *>" )) {
 				break;
-			} else if( PatternMatch( line+l, " */>" )) {
+			} else if( StrPatternMatch( line+l, " */>" )) {
 				return true;
 			}
 		}
-	} else if( l = PatternMatch( line, " *<%>", &m_Name )) {
+	} else if( l = StrPatternMatch( line, " *<%>", &m_Name )) {
 
 	} else {
 		return false;
 	}
 
-	if( PatternMatch( line+l, "%</%>", &m_Value, &tag ))
+	if( StrPatternMatch( line+l, "%</%>", &m_Value, &tag ))
 		return true;
 
 	for( ;; ) {
 		tf.ReadLine( str );
-		if( PatternMatch( str.c_str(), " *</%>", &tag ))
+		if( StrPatternMatch( str.c_str(), " *</%>", &tag ))
 			return true;
 		XmlNode * child = new XmlNode();
 		if( !child->Load( tf, str.c_str() )) {

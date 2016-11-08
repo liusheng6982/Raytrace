@@ -24,4 +24,7 @@ namespace NanoCore {
 	class XmlNode;
 }
 
+template< typename X > X Min( X a, X b ) { return (a<b) ? a : b; }
+template< typename X > X Max( X a, X b ) { return (a>b) ? a : b; }
+
 #endif

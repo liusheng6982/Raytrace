@@ -23,6 +23,7 @@ struct Triangle
 
 	float2  uv[3];
 	int       mtl;
+	int       triangleID;
 };
 
 struct RayInfo

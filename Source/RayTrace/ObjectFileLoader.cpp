@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <NanoCore/File.h>
+#include <NanoCore/Threads.h>
 #include "ObjectFileLoader.h"
 
 #define BUCKET_SIZE 1024
@@ -10,8 +11,6 @@
 using namespace std;
 
 #pragma warning( disable : 4996 )
-
-#pragma optimize( "", off )
 
 class ObjectFileLoader : public IObjectFileLoader
 {
@@ -195,19 +194,20 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		EraseContainer( m_Positions );
 		for( int count = m_PositionCount; count > 0; count -= BUCKET_SIZE ) {
 			m_Positions.push_back( new float3[BUCKET_SIZE] );
-			fread( m_Positions.back(), min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
+			fread( m_Positions.back(), Min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
 		}
 		EraseContainer( m_UVs );
 		for( int count = m_UVCount; count > 0; count -= BUCKET_SIZE ) {
 			m_UVs.push_back( new float2[BUCKET_SIZE] );
-			fread( m_UVs.back(), min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
+			fread( m_UVs.back(), Min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
 		}
 		EraseContainer( m_Triangles );
 		for( int count = m_TriangleCount; count > 0; count -= BUCKET_SIZE ) {
 			m_Triangles.push_back( new Triangle[BUCKET_SIZE] );
-			fread( m_Triangles.back(), min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
+			fread( m_Triangles.back(), Min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
 		}
 		fclose( fp );
+		NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
 		return true;
 	}
 
@@ -217,17 +217,28 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 
 	m_PositionCount = m_UVCount = m_TriangleCount = 0;
 
-	int materialID = 0;
+	int materialID = 0, lineNum = 0;
+
+	char mL[1024];
+	int maxLine = 0;
+
+	aabb box;
 
 	char line[1024];
 	while( !f.EndOfFile()) {
 
 		f.ReadLine( line );
+		lineNum++;
+
+		if( strlen(line) > maxLine ) {
+			maxLine = strlen(line);
+			strcpy( mL, line );
+		}
 
 		switch( line[0] ) {
 			case 'm':
 				if( !strnicmp( line, "mtllib ", 7 )) {
-					std::wstring name = NanoCore::FS::GetPath( pwFilename ) + NanoCore::FS::MbsToWcs( line + strlen( "mtllib " ));
+					std::wstring name = NanoCore::StrGetPath( pwFilename ) + NanoCore::StrMbsToWcs( line + strlen( "mtllib " ));
 					LoadMaterialLibrary( name.c_str() );
 				}
 				break;
@@ -241,9 +252,14 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 					float2 uv;
 					sscanf( line+3, "%f %f", &uv.x, &uv.y );
 					AddElement( uv, m_UVs, m_UVCount );
-				} else {
+				} else if( line[1] == ' ' ) {
 					float3 pos;
-					sscanf( line+3, "%f %f %f", &pos.x, &pos.y, &pos.z );
+					sscanf( line+2, "%f %f %f", &pos.x, &pos.y, &pos.z );
+
+					if( !m_PositionCount )
+						box.min = box.max = pos;
+					else
+						box += pos;
 					AddElement( pos, m_Positions, m_PositionCount );
 				}
 				break;
@@ -291,7 +307,6 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 						i++;
 
 					p = strchr( p+1, ' ' );
-					//if( !p || !strchr( p, '/' ))
 					if( !p )
 						break;
 				}
@@ -300,6 +315,8 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		}
 		m_Progress = int( int64(f.GetOffset()) * 100 / int64(f.GetSize()));
 	}
+	NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
+	NanoCore::DebugOutput( "\tbox min: %0.3f, %0.3f, %0.3f\n\tbox max: %0.3f, %0.3f, %0.3f\n", box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z );
 	m_Progress = 100;
 	Save( wFilenameCached.c_str());
 	return true;
@@ -316,13 +333,13 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename )
 	fwrite( &m_TriangleCount, sizeof(m_TriangleCount), 1, fp );
 
 	for( int i=0, count = m_PositionCount; count > 0; ++i, count -= BUCKET_SIZE ) {
-		fwrite( m_Positions[i], min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
+		fwrite( m_Positions[i], Min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
 	}
 	for( int i=0, count = m_UVCount; count > 0; ++i, count -= BUCKET_SIZE ) {
-		fwrite( m_UVs[i], min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
+		fwrite( m_UVs[i], Min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
 	}
 	for( int i=0, count = m_TriangleCount; count > 0; ++i, count -= BUCKET_SIZE ) {
-		fwrite( m_Triangles[i], min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
+		fwrite( m_Triangles[i], Min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
 	}
 	fclose( fp );
 }

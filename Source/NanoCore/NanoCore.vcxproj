@@ -137,6 +137,7 @@
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Serialize.h" />
+    <ClInclude Include="String.h" />
     <ClInclude Include="Threads.h" />
     <ClInclude Include="Windows.h" />
   </ItemGroup>
@@ -145,6 +146,7 @@
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Serialize.cpp" />
+    <ClCompile Include="String.cpp" />
     <ClCompile Include="Threads.cpp" />
     <ClCompile Include="Windows.cpp" />
   </ItemGroup>

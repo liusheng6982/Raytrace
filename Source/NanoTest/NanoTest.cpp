@@ -76,8 +76,11 @@ MainJob mjob;
 
 int main()
 {
+	int a,b;
+	int len = sscanf( "138879/83984", "%d/%d", &a, &b );
+
 	std::string name, attr, attr_val;
-	if( PatternMatch( "   <name x=\"5\"  />", "\\s*<%\\s+%=\"%\"\\s*/\\s*>", &name, &attr, &attr_val )) {
+	if( StrPatternMatch( "   <name x=\"5\"  />", "\\s*<%\\s+%=\"%\"\\s*/\\s*>", &name, &attr, &attr_val )) {
 		printf( "Match!\n\tname = %s\n\tattribute = %s\n\tvalue = %s\n", name.c_str(), attr.c_str(), attr_val.c_str() );
 	} else {
 		printf( "Not matched!" );

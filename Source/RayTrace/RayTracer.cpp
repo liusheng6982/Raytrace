@@ -266,10 +266,20 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
 				break;
 			case ePreviewShading_TriangleID: {
-				uint32 c = (uint32)ri.tri;
+				uint32 c = ri.tri->triangleID ^ (ri.tri->triangleID << 18) ^ (ri.tri->triangleID << 5);
 				pixel[0] = c&0xFF;
 				pixel[1] = (c>>8)&0xFF;
 				pixel[2] = (c>>16)&0xFF;
+
+				/*if( pixel[0] > pixel[1] && pixel[0] > pixel[2] )
+					pixel[1] /= 2, pixel[2] /= 2;
+				else if( pixel[1] > pixel[0] && pixel[1] > pixel[2] )
+					pixel[0] /= 2, pixel[2] /= 2;
+				else
+					pixel[0] /= 2, pixel[1] /= 2;*/
+
+				if( ri.tri->triangleID == m_SelectedTriangle )
+					pixel[0] = pixel[1] = pixel[2] = 0xFF;
 				break;
 			}
 			case ePreviewShading_Checker: {
@@ -356,6 +366,7 @@ Raytracer::Raytracer()
 	m_SunDiskAngle = 0.52f;
 	m_GIBounces = 3;
 	m_NumThreads = 3;
+	m_SelectedTriangle = -1;
 
 	ComputeProgressiveDistribution( 1 << m_ScreenTileSizePow2, progressive_order );
 }
@@ -425,12 +436,12 @@ static void LoadAsBmp( std::wstring path, std::string file, Image & img ) {
 	}
 	std::wstring wfile( file.begin(), file.end());
 	path += wfile;
-	NanoCore::FS::ReplaceExtension( path, L"bmp" );
+	NanoCore::StrReplaceExtension( path, L"bmp" );
 	img.Load( path.c_str());
 }
 
 void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
-	std::wstring path = NanoCore::FS::GetPath( loader.GetFilename() );
+	std::wstring path = NanoCore::StrGetPath( loader.GetFilename() );
 	int num = loader.GetNumMaterials();
 	m_Materials.resize( num );
 	for( int i=0; i<num; ++i ) {
