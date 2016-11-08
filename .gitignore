@@ -1,22 +1,8 @@
-*.obj
-*.jpg
-*.tlog
-*.pdb
-*.exe
-*.idb
-*.user
-*.suo
-*.log
-*.lastbuildstate
-*.lib
-*.ilk
-*.ipch
-*.sdf
-*.cache
-*.manifest
-*.opensdf
 Bin/
 Temp/
+Data/
+*.suo
+*.user
 
 # Windows image file caches
 Thumbs.db
