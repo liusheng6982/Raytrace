@@ -53,6 +53,7 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 		Triangle & t = m_Triangles[i];
 		const IObjectFileLoader::Triangle * p = pModel->GetTriangle( i );
 		t.triangleID = i;
+		t.mtl = p->material;
 
 		for( int j=0; j<3; ++j ) {
 			t.pos[j] = *pModel->GetVertexPos( p->pos[j] );
@@ -302,6 +303,8 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray )
 			ray.hitlen = k;
 			ray.n = t.n;
 			ray.tri = &t;
+			ray.bari_u = u;
+			ray.bari_v = v;
 		}
 #endif
 	}
@@ -333,12 +336,10 @@ bool KDTree::Empty()
 	return m_Tree.empty();
 }
 
-void KDTree::GetBBox( float3 & min, float3 & max )
-{
+aabb KDTree::GetBBox() {
 	if( !Empty() ) {
-		min = m_Tree[0].min;
-		max = m_Tree[0].max;
+		return aabb( m_Tree[0].min, m_Tree[0].max );
 	} else {
-		min = max = float3(0,0,0);
+		return aabb( float3(0,0,0), float3(0,0,0));
 	}
 }

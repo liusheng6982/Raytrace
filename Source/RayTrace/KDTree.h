@@ -32,6 +32,7 @@ struct RayInfo
 	float hitlen;
 	float3  n;
 	const Triangle * tri;
+	float bari_u, bari_v;
 
 	RayInfo() : hitlen(1000000.0f), tri(0) {}
 
@@ -64,7 +65,7 @@ public:
 	void Build( IObjectFileLoader * pModel, int maxTrianglesPerNode );
 	void Intersect( RayInfo & ray );
 	bool Empty();
-	void GetBBox( float3 & min, float3 & max );
+	aabb GetBBox();
 
 private:
 	int BuildTree( int l, int r );

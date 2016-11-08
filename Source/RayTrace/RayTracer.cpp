@@ -7,8 +7,6 @@
 //#define JobsLog NanoCore::DebugOutput
 #define JobsLog
 
-
-
 static float randf()
 {
 	return rand() / 32767.f;
@@ -270,14 +268,6 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				pixel[0] = c&0xFF;
 				pixel[1] = (c>>8)&0xFF;
 				pixel[2] = (c>>16)&0xFF;
-
-				/*if( pixel[0] > pixel[1] && pixel[0] > pixel[2] )
-					pixel[1] /= 2, pixel[2] /= 2;
-				else if( pixel[1] > pixel[0] && pixel[1] > pixel[2] )
-					pixel[0] /= 2, pixel[2] /= 2;
-				else
-					pixel[0] /= 2, pixel[1] /= 2;*/
-
 				if( ri.tri->triangleID == m_SelectedTriangle )
 					pixel[0] = pixel[1] = pixel[2] = 0xFF;
 				break;
@@ -289,6 +279,42 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				shade = shade*0.5f + 0.5f;
 				int c = int(hit.x) + int(hit.y) + int(hit.z);
 				pixel[0] = pixel[1] = pixel[2] = int( ((c&1) ? 255 : 50)*shade );
+				break;
+			}
+			case ePreviewShading_Diffuse: {
+				float2 uv10 = ri.tri->uv[1] - ri.tri->uv[0];
+				float2 uv20 = ri.tri->uv[2] - ri.tri->uv[0];
+				float2 uv = uv10 * ri.bari_u + uv20 * ri.bari_v + ri.tri->uv[0];
+
+				float u = uv.x - floorf(uv.x);
+				float v = uv.y - floorf(uv.y);
+
+				if( ri.tri->mtl>=0 ) {
+					const Material & mtl = m_Materials[ri.tri->mtl];
+					const Image & img = mtl.mapDiffuse;
+					if( img.GetWidth()) {
+						u *= img.GetWidth()-1;
+						v *= img.GetHeight()-1;
+						int x = int(u);
+						int y = int(v);
+						if( x >= img.GetWidth()) x = img.GetWidth()-1;
+						if( y >= img.GetHeight()) y = img.GetHeight()-1;
+						//y = img.GetHeight() - y - 1;
+						img.GetPixel( x, y, pixel );
+					} else {
+						pixel[0] = int(mtl.Kd.x * 255.0f);
+						pixel[1] = int(mtl.Kd.y * 255.0f);
+						pixel[2] = int(mtl.Kd.z * 255.0f);
+					}
+
+					//pixel[0] = int(ri.bari_u*255.0f);
+					//pixel[1] = int(ri.bari_v*255.0f);
+					//pixel[2] = 0;
+
+
+				} else {
+					pixel[0] = pixel[1] = pixel[2] = 0;
+				}
 				break;
 			}
 		}
@@ -340,14 +366,22 @@ void SpawnProgressiveJobsJob::Execute() {
 	int max_index = 1 << pRaytracer->m_ScreenTileSizePow2;
 	max_index *= max_index;
 	int curr_order;
+
 	JobsLog( "SpawnProgressiveJobsJob: index = %d\n", ProgJobs[0].index );
 	for( size_t i=0; i<ProgJobs.size(); ++i ) {
 		curr_order = ++ProgJobs[i].index;
 		NanoCore::JobManager::AddJob( &ProgJobs[i] );
 	}
+
+	static uint64 t0;
+	if( curr_order == 0 )
+		t0 = NanoCore::GetTicks();
+
 	if( curr_order < max_index-1 ) {
 		JobsLog( "SpawnProgressiveJobsJob: adding self\n" );
 		NanoCore::JobManager::AddJob( this, 0 );
+	} else {
+		NanoCore::DebugOutput( "Rendering finished for %d ms\n", (int)NanoCore::TickToMicroseconds( NanoCore::GetTicks() - t0 ));
 	}
 }
 
@@ -429,7 +463,7 @@ void Raytracer::GetStatus( std::wstring & status ) {
 	}
 }
 
-static void LoadAsBmp( std::wstring path, std::string file, Image & img ) {
+void Raytracer::LoadAsBmp( std::wstring path, std::string file, Image & img ) {
 	if( file.empty()) {
 		img.Clear();
 		return;
@@ -438,12 +472,19 @@ static void LoadAsBmp( std::wstring path, std::string file, Image & img ) {
 	path += wfile;
 	NanoCore::StrReplaceExtension( path, L"bmp" );
 	img.Load( path.c_str());
+
+	m_ImageCountLoaded++;
+	m_ImageSizeLoaded += img.GetWidth() * img.GetHeight() * 3;
 }
 
 void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 	std::wstring path = NanoCore::StrGetPath( loader.GetFilename() );
 	int num = loader.GetNumMaterials();
 	m_Materials.resize( num );
+
+	m_ImageCountLoaded = 0;
+	m_ImageSizeLoaded = 0;
+
 	for( int i=0; i<num; ++i ) {
 		auto src = loader.GetMaterial(i);
 		auto & dst = m_Materials[i];
@@ -452,8 +493,10 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 		dst.Ke = src->Ke;
 		dst.Tr = src->Transparency;
 
-		LoadAsBmp( path, src->mapKd, dst.Md );
-		LoadAsBmp( path, src->mapKs, dst.Ms );
-		LoadAsBmp( path, src->mapBump, dst.Mb );
+		LoadAsBmp( path, src->mapKd, dst.mapDiffuse );
+		LoadAsBmp( path, src->mapKs, dst.mapSpecular );
+		LoadAsBmp( path, src->mapBump, dst.mapBump );
+		LoadAsBmp( path, src->mapAlpha, dst.mapAlpha );
 	}
+	NanoCore::DebugOutput( "%d images loaded (%d Mb)\n", m_ImageCountLoaded, m_ImageSizeLoaded / (1024*1024) );
 }

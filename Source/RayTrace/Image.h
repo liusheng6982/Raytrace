@@ -22,8 +22,10 @@ public:
 	int GetHeight() const { return m_height; }
 	int GetBitsPerPixel() const { return m_bpp; }
 
+	const uint8 * GetImageAt( int x, int y ) const;
 	uint8 * GetImageAt( int x, int y );
-	void    GetPixel( int x, int y, int * pix );
+
+	void    GetPixel( int x, int y, int * pix ) const;
 	void    SetPixel( int x, int y, int * pix );
 
 	bool Load( const wchar_t * name );

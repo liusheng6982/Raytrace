@@ -62,6 +62,7 @@ class MainWnd : public NanoCore::WindowMain
 	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED = 1201;
 	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1202;
 	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1203;
+	const static int IDC_VIEW_PREVIEWMODE_DIFFUSE = 1204;
 	const static int IDC_VIEW_OPTIONS = 1102;
 	const static int IDC_CAMERAS_FIRST = 2000;
 
@@ -179,7 +180,8 @@ public:
 			return;
 
 		if( wheel ) {
-			m_Camera.pos += wheel>0 ? m_Camera.at : -m_Camera.at;
+			float step = len( m_KDTree.GetBBox().GetSize() ) / 20.0f;
+			m_Camera.pos += (wheel>0 ? m_Camera.at : -m_Camera.at) * step;
 			m_bInvalidate = true;
 		}
 
@@ -281,6 +283,7 @@ public:
 				AddMenuItem( previewMenu, L"Colored cube shadowed", IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED );
 				AddMenuItem( previewMenu, L"Triangle ID", IDC_VIEW_PREVIEWMODE_TRIANGLEID );
 				AddMenuItem( previewMenu, L"Checker", IDC_VIEW_PREVIEWMODE_CHECKER );
+				AddMenuItem( previewMenu, L"Diffuse map", IDC_VIEW_PREVIEWMODE_DIFFUSE );
 			AddMenuItem( viewMenu, L"Options", IDC_VIEW_OPTIONS );
 		AddSubmenu( mainMenu, L"Cameras", m_CamerasMenu );
 	}
@@ -328,6 +331,10 @@ public:
 				break;
 			case IDC_VIEW_PREVIEWMODE_CHECKER:
 				m_Raytracer.m_Shading = Raytracer::ePreviewShading_Checker;
+				m_bInvalidate = true;
+				break;
+			case IDC_VIEW_PREVIEWMODE_DIFFUSE:
+				m_Raytracer.m_Shading = Raytracer::ePreviewShading_Diffuse;
 				m_bInvalidate = true;
 				break;
 			default:
@@ -431,11 +438,10 @@ public:
 		if( m_KDTree.Empty())
 			return;
 
-		float3 min, max;
-		m_KDTree.GetBBox( min, max );
+		aabb box = m_KDTree.GetBBox();
 
-		float3 center = (min + max) * 0.5f;
-		float L = len( min - center );
+		float3 center = (box.min + box.max) * 0.5f;
+		float L = len( box.min - center );
 
 		m_Camera.fovy = 60.0f * 3.1415f / 180.0f;
 		m_Camera.world_up = float3(0,-1,0);

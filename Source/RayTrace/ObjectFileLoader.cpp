@@ -73,6 +73,7 @@ public:
 
 	int m_PositionCount, m_UVCount, m_TriangleCount;
 	wstring m_wFilename;
+	string m_Mtllib;
 
 	volatile int m_Progress;
 };
@@ -161,6 +162,8 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 			mtl->mapKs = ptr+7;
 		else if( ptr = strstr( buf, "map_bump" ))
 			mtl->mapBump = ptr+9;
+		else if( ptr = strstr( buf, "map_d" ))
+			mtl->mapAlpha = ptr+6;
 		else if( ptr = strstr( buf, "bump" ))
 			mtl->mapBump = ptr+5;
 		else if( ptr = strstr( buf, "kd" ))
@@ -187,6 +190,13 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 
 	FILE * fp = _wfopen( wFilenameCached.c_str(), L"rb" );
 	if( fp ) {
+
+		int len;
+		fread( &len, sizeof(len), 1, fp );
+
+		m_Mtllib.resize( len );
+		fread( &m_Mtllib[0], len, 1, fp );
+
 		fread( &m_PositionCount, sizeof(m_PositionCount), 1, fp );
 		fread( &m_UVCount, sizeof(m_UVCount), 1, fp );
 		fread( &m_TriangleCount, sizeof(m_TriangleCount), 1, fp );
@@ -208,6 +218,11 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		}
 		fclose( fp );
 		NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
+
+		wstring name = NanoCore::StrGetPath( pwFilename );
+		name += NanoCore::StrMbsToWcs( m_Mtllib.c_str());
+		LoadMaterialLibrary( name.c_str() );
+
 		return true;
 	}
 
@@ -219,9 +234,6 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 
 	int materialID = 0, lineNum = 0;
 
-	char mL[1024];
-	int maxLine = 0;
-
 	aabb box;
 
 	char line[1024];
@@ -230,15 +242,11 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		f.ReadLine( line );
 		lineNum++;
 
-		if( strlen(line) > maxLine ) {
-			maxLine = strlen(line);
-			strcpy( mL, line );
-		}
-
 		switch( line[0] ) {
 			case 'm':
 				if( !strnicmp( line, "mtllib ", 7 )) {
-					std::wstring name = NanoCore::StrGetPath( pwFilename ) + NanoCore::StrMbsToWcs( line + strlen( "mtllib " ));
+					m_Mtllib = line + strlen( "mtllib " );
+					std::wstring name = NanoCore::StrGetPath( pwFilename ) + NanoCore::StrMbsToWcs( m_Mtllib.c_str() );
 					LoadMaterialLibrary( name.c_str() );
 				}
 				break;
@@ -266,6 +274,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 			case 'f': {
 				Triangle f;
 				f.material = materialID;
+				assert( materialID >= 0 && materialID < m_Materials.size() );
 				char * p = line+2;
 
 				bool bTexCoords = strchr( p, '/' ) != NULL;
@@ -302,7 +311,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 					if( i == 2 ) {
 						AddElement( f, m_Triangles, m_TriangleCount );
 						f.pos[1] = f.pos[2];
-						f.uv[1] = f.uv[1];
+						f.uv[1] = f.uv[2];
 					} else
 						i++;
 
@@ -327,6 +336,10 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename )
 	FILE * fp = _wfopen( pwFilename, L"wb" );
 	if( !fp )
 		return;
+
+	int len = m_Mtllib.size();
+	fwrite( &len, sizeof(len), 1, fp );
+	fwrite( &m_Mtllib[0], len, 1, fp );
 
 	fwrite( &m_PositionCount, sizeof(m_PositionCount), 1, fp );
 	fwrite( &m_UVCount, sizeof(m_UVCount), 1, fp );

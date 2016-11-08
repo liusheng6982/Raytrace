@@ -21,7 +21,7 @@ public:
 	struct Material {
 		float Ns, Transparency;
 		float3 Ka, Kd, Ks, Ke;
-		std::string mapKa, mapKd, mapKs, mapBump;
+		std::string mapKa, mapKd, mapKs, mapBump, mapAlpha;
 		Material();
 	};
 

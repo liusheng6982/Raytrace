@@ -22,7 +22,18 @@ struct float2
 	};
 
 	float2() {}
+	float2( float x, float y ) : x(x), y(y) {}
 	float2( const float2 & f3 ) { x = f3.x; y = f3.y; }
+
+	friend float2 operator + ( float2 a, float2 b ) {
+		return float2( a.x + b.x, a.y + b.y );
+	}
+	friend float2 operator - ( float2 a, float2 b ) {
+		return float2( a.x - b.x, a.y - b.y );
+	}
+	friend float2 operator * ( float2 a, float k ) {
+		return float2( a.x*k, a.y*k );
+}
 };
 
 struct float3
@@ -88,11 +99,11 @@ struct float3
 	}
 };
 
-struct aabb
-{
+struct aabb {
 	float3 min, max;
 
 	aabb() {}
+	aabb( float3 min, float3 max ) : min(min), max(max) {}
 
 	void reset() {
 		min = float3(1000000.0f,1000000.0f,1000000.0f);
@@ -102,6 +113,9 @@ struct aabb
 		if( a.x < min.x ) min.x = a.x; else if( a.x > max.x ) max.x = a.x;
 		if( a.y < min.y ) min.y = a.y; else if( a.y > max.y ) max.y = a.y;
 		if( a.z < min.z ) min.z = a.z; else if( a.z > max.z ) max.z = a.z;
+	}
+	float3 GetSize() const {
+		return max - min;
 	}
 };
 

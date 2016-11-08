@@ -71,12 +71,16 @@ int Image::WriteAsBMP( const wchar_t * name ) {
 	return 1;
 }
 
+const uint8 * Image::GetImageAt( int x, int y ) const {
+	return m_pBuffer ? m_pBuffer + (x + y*m_width)*m_bpp/8 : NULL;
+}
+
 uint8 * Image::GetImageAt( int x, int y ) {
 	return m_pBuffer ? m_pBuffer + (x + y*m_width)*m_bpp/8 : NULL;
 }
 
-void Image::GetPixel( int x, int y, int * out ) {
-	uint8 * p = GetImageAt( x, y );
+void Image::GetPixel( int x, int y, int * out ) const {
+	const uint8 * p = GetImageAt( x, y );
 	out[0] = p[0];
 	if( m_bpp > 8 ) {
 		out[1] = p[1];
@@ -157,6 +161,7 @@ bool Image::Load( const wchar_t * name ) {
 
 	m_width = bmpih.biWidth;
 	m_height = bmpih.biHeight;
+	m_bpp = 24;
 
 	int pw = m_width*3;
 	if( pw % 4 ) pw += 4 - pw%4;

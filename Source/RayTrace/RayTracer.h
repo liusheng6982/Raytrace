@@ -18,6 +18,7 @@ public:
 		ePreviewShading_ColoredCubeShadowed,
 		ePreviewShading_TriangleID,
 		ePreviewShading_Checker,
+		ePreviewShading_Diffuse
 	};
 
 	Raytracer();
@@ -48,11 +49,16 @@ public:
 	KDTree * m_pKDTree;
 
 	struct Material {
-		Image Md, Ms, Mb;
+		Image mapDiffuse, mapSpecular, mapBump, mapAlpha;
 		float Tr;
 		float3 Kd, Ks, Ke;
 	};
 	std::vector<Material> m_Materials;
+
+	int m_ImageCountLoaded;
+	int m_ImageSizeLoaded;
+
+	void LoadAsBmp( std::wstring path, std::string file, Image & img );
 };
 
 #endif
