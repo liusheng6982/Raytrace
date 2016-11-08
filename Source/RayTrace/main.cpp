@@ -7,6 +7,8 @@
 
 #include <NanoCore/Threads.h>
 #include <NanoCore/Windows.h>
+#include <NanoCore/File.h>
+#include <NanoCore/Serialize.h>
 #include "ObjectFileLoader.h"
 #include "KDTree.h"
 #include "RayTracer.h"
@@ -87,9 +89,9 @@ class MainWnd : public NanoCore::WindowMain
 		OptionItem( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
 	};
 	std::vector<OptionItem> m_OptionItems;
-	std::wstring m_wOptionsFile;
 
-	void PersistOptions( const std::wstring & wFile, bool bLoad ) {
+	void PersistOptions( bool bLoad ) {
+		std::wstring wFile = m_wFile + L".options";
 		FILE * fp = _wfopen( wFile.c_str(), bLoad ? L"rt" : L"wt" );
 		if( !fp )
 			return;
@@ -144,7 +146,7 @@ class MainWnd : public NanoCore::WindowMain
 	protected:
 		virtual void OnOK() {
 			wnd.m_Image.Init( wnd.m_PreviewResolution, wnd.m_PreviewResolution * wnd.GetHeight() / wnd.GetWidth(), 24 );
-			wnd.PersistOptions( wnd.m_wOptionsFile, false );
+			wnd.PersistOptions( false );
 		}
 	};
 
@@ -343,6 +345,44 @@ public:
 		swprintf( w, 128, L"Camera %d", m_Cameras.size()+1 );
 		AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + m_Cameras.size());
 		m_Cameras.push_back( m_Camera );
+		SaveCameras();
+	}
+	void SaveCameras() {
+		NanoCore::XmlNode * root = new NanoCore::XmlNode( "Cameras" );
+		for( size_t i=0; i<m_Cameras.size(); ++i ) {
+			root->AddChild( new NanoCore::XmlNode( "Camera" ));
+			m_Cameras[i].Serialize( root->GetChild( i ));
+		}
+		std::wstring name = m_wFile + L".cameras.xml";
+		NanoCore::IFile * f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
+		if( f ) {
+			NanoCore::TextFile tf( f );
+			root->Save( tf );
+			delete root;
+		}
+	}
+	void LoadCameras() {
+		m_Cameras.clear();
+		ClearMenu( m_CamerasMenu );
+		std::wstring name = m_wFile + L".cameras.xml";
+		NanoCore::IFile * f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efRead );
+		if( f ) {
+			NanoCore::TextFile tf( f );
+			NanoCore::XmlNode * root = new NanoCore::XmlNode();
+			root->Load( tf );
+			for( int i=0; i<root->GetNumChildren(); ++i ) {
+				NanoCore::XmlNode * camNode = root->GetChild( i );
+				if( !strcmp( camNode->GetName(), "Camera" )) {
+					m_Cameras.push_back( Camera() );
+					m_Cameras.back().Serialize( camNode );
+
+					wchar_t w[128];
+					swprintf( w, 128, L"Camera %d", i+1 );
+					AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + i);
+				}
+			}
+			delete root;
+		}
 	}
 	void LoadModel() {
 		std::wstring wFolder = NanoCore::GetCurrentFolder();
@@ -351,8 +391,13 @@ public:
 			m_LoadingThread.Init( wFile, &m_KDTree, &m_Raytracer );
 			m_LoadingThread.Start( NULL );
 
-			m_wOptionsFile = wFile + L".options.txt";
-			PersistOptions( m_wOptionsFile, true );
+			m_wFile = wFile;
+			size_t p = m_wFile.find_last_of( L'.' );
+			if( p != std::wstring::npos )
+				m_wFile.erase( p );
+
+			PersistOptions( true );
+			LoadCameras();
 		}
 	}
 	void SaveImage() {
@@ -386,6 +431,7 @@ public:
 		m_bInvalidate = true;
 	}
 
+	std::wstring    m_wFile;
 	std::string     m_strStatus;
 	LoadingThread   m_LoadingThread;
 	KDTree          m_KDTree;

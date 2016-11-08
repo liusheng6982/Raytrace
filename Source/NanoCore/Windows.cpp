@@ -206,22 +206,26 @@ int WindowMain::CreateMenu()
 	return int(s_Menus.size()-1);
 }
 
-void WindowMain::AddMenuItem( int menu, const wchar_t * pcName, int id )
-{
+void WindowMain::AddMenuItem( int menu, const wchar_t * pcName, int id ) {
 	if( menu<0 || menu >= (int)s_Menus.size())
 		return;
 	::AppendMenu( s_Menus[menu], MF_STRING, (UINT_PTR)id, pcName );
 	::DrawMenuBar( g_hWnd );
 }
 
-void WindowMain::AddSubmenu( int menu, const wchar_t * pcName, int submenu )
-{
+void WindowMain::AddSubmenu( int menu, const wchar_t * pcName, int submenu ) {
 	if( menu<0 || menu >= (int)s_Menus.size())
 		return;
 	if( submenu < 0 || submenu >= (int)s_Menus.size())
 		return;
 	::AppendMenu( s_Menus[menu], MF_STRING | MF_POPUP, (UINT_PTR)s_Menus[submenu], pcName );
 	::DrawMenuBar( g_hWnd );
+}
+
+void WindowMain::ClearMenu( int menu ) {
+	while( ::GetMenuItemCount( s_Menus[menu] ) > 0 ) {
+		::DeleteMenu( s_Menus[menu], 0, MF_BYPOSITION );
+	}
 }
 
 bool WindowMain::MessageBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel ) {

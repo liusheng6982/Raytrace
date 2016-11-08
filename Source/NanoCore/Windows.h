@@ -38,6 +38,7 @@ public:
 	int CreateMenu();
 	void AddSubmenu( int menu, const wchar_t * pcName, int submenu );
 	void AddMenuItem( int menu, const wchar_t * pcName, int id );
+	void ClearMenu( int menu );
 
 	static bool MessageBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel );
 };
