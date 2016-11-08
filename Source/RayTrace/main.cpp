@@ -1,10 +1,3 @@
-//#include <windows.h>
-//#include <stdlib.h>
-//#include <string.h>
-//#include <tchar.h>
-//#include <stdio.h>
-
-
 #include <NanoCore/Threads.h>
 #include <NanoCore/Windows.h>
 #include <NanoCore/File.h>
@@ -13,6 +6,8 @@
 #include "KDTree.h"
 #include "RayTracer.h"
 #include <memory>
+
+
 
 class LoadingThread : public NanoCore::Thread
 {

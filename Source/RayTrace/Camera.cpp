@@ -48,4 +48,8 @@ void Camera::Serialize( NanoCore::XmlNode * node ) {
 	::Serialize( up, node->SerializeChild( "up" ));
 	::Serialize( right, node->SerializeChild( "right" ));
 	::Serialize( world_up, node->SerializeChild( "world_up" ));
+
+	NanoCore::XmlNode * n = node->SerializeChild( "fovy" );
+	if( !n->Get( fovy ))
+		n->Set( fovy );
 }

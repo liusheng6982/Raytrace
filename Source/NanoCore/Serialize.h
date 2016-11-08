@@ -32,9 +32,12 @@ public:
 	const char * GetAttributeName( int idx );
 	const char * GetAttributeValue( int idx );
 
-	void Get( float & f );
-	void Get( int & i );
-	void Get( std::string & s );
+	bool Get( float & f );
+	bool Get( int & i );
+	bool Get( std::string & s );
+	void Set( float f );
+	void Set( int i );
+	void Set( const char * str );
 
 	int  GetNumChildren();
 	XmlNode * GetChild( int idx );

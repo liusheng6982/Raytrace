@@ -66,16 +66,41 @@ const char * XmlNode::GetAttributeValue( int idx ) {
 	return m_Attributes[idx].second.c_str();
 }
 
-void XmlNode::Get( float & f ) {
+bool XmlNode::Get( float & f ) {
+	if( m_Value.empty())
+		return false;
 	f = (float)atof(m_Value.c_str());
+	return true;
 }
 
-void XmlNode::Get( int & i ) {
+bool XmlNode::Get( int & i ) {
+	if( m_Value.empty())
+		return false;
 	i = atol(m_Value.c_str());
+	return true;
 }
 
-void XmlNode::Get( std::string & s ) {
+bool XmlNode::Get( std::string & s ) {
+	if( m_Value.empty())
+		return false;
 	s = m_Value;
+	return true;
+}
+
+void XmlNode::Set( float f ) {
+	char buf[16];
+	sprintf_s( buf, "%0.4f", f );
+	m_Value = buf;
+}
+
+void XmlNode::Set( int i ) {
+	char buf[16];
+	sprintf_s( buf, "%d", i );
+	m_Value = buf;
+}
+
+void XmlNode::Set( const char * str ) {
+	m_Value = str;
 }
 
 int XmlNode::GetNumChildren() {
