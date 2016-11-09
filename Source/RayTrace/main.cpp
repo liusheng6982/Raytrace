@@ -88,15 +88,17 @@ class MainWnd : public NanoCore::WindowMain
 
 	void PersistOptions( bool bLoad ) {
 		std::wstring wFile = m_wFile + L".options";
-		FILE * fp = _wfopen( wFile.c_str(), bLoad ? L"rt" : L"wt" );
+		NanoCore::IFile * fp = NanoCore::FS::Open( wFile.c_str(), bLoad ? NanoCore::FS::efRead : NanoCore::FS::efWriteTrunc );
 		if( !fp )
 			return;
+
+		NanoCore::TextFile tf( fp );
 
 		for( size_t i=0; i<m_OptionItems.size(); ++i ) {
 			OptionItem & it = m_OptionItems[i];
 			if( bLoad ) {
 				char buf[512] = "";
-				fgets( buf, 512, fp );
+				tf.ReadLine( buf, 512 );
 
 				char * nl = strchr( buf, '\n' );
 				if( nl ) nl[0] = 0;
@@ -113,16 +115,15 @@ class MainWnd : public NanoCore::WindowMain
 						*it.str = p+1;
 				}
 			} else {
-				fprintf( fp, "%s=", it.name.c_str() );
+				tf.Write( "%s=", it.name.c_str() );
 				if( it.i )
-					fprintf( fp, "%d\n", *it.i );
+					tf.Write( "%d\n", *it.i );
 				else if( it.f )
-					fprintf( fp, "%0.5f\n", *it.f );
+					tf.Write( "%0.5f\n", *it.f );
 				else
-					fprintf( fp, "%s\n", it.str->c_str() );
+					tf.Write( "%s\n", it.str->c_str() );
 			}
 		}
-		fclose( fp );
 	}
 
 	class OptionsWnd : public NanoCore::WindowInputDialog {

@@ -1,9 +1,9 @@
-#include <stdio.h>
 #include <vector>
 #include <map>
 #include <string>
 #include <NanoCore/File.h>
 #include <NanoCore/Threads.h>
+#include <NanoCore/Windows.h>
 #include "ObjectFileLoader.h"
 
 #define BUCKET_SIZE 1024
@@ -78,76 +78,19 @@ public:
 	volatile int m_Progress;
 };
 
-
-
-struct TextFileReadStream
-{
-	int  bufp, bufsize;
-	char buf[1024];
-	FILE * fp;
-	int size;
-
-	TextFileReadStream( const wchar_t * pw ) {
-		fp = _wfopen( pw, L"rb" );
-		bufsize = bufp = 0;
-		fseek( fp, 0, SEEK_END );
-		size = ftell( fp );
-		fseek( fp, 0, SEEK_SET );
-	}
-	~TextFileReadStream() {
-		if( fp ) fclose( fp );
-	}
-	bool Exist() const {
-		return fp != NULL;
-	}
-	bool EndOfFile() {
-		return feof( fp ) && bufp == bufsize;
-	}
-	int GetOffset() {
-		return ftell(  fp );
-	}
-	int GetSize() {
-		return size;
-	}
-	void ReadLine( char * pcLine ) {
-		int i = 0;
-		for( ;; ) {
-			if( bufp == bufsize ) {
-				bufp = 0;
-				bufsize = fread( buf, 1, 1024, fp );
-				if( !bufsize ) break;
-			}
-			char c = buf[bufp++];
-			if( c > 13 )
-				pcLine[i++] = c;
-			else if( i ) break;
-		}
-		pcLine[i] = 0;
-	}
-};
-
-static void TrimLineEnding( char * buf ) {
-	while( *buf ) {
-		if( *buf == '\n' || *buf == '\r' ) {
-			*buf = 0;
-			break;
-		} else
-			buf++;
-	}
-}
-
 void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
-	FILE * fp = _wfopen( name, L"rt" );
+	NanoCore::IFile * fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
 	if( !fp )
 		return;
 
+	NanoCore::TextFile tf( fp );
+
 	m_Materials.clear();
 
-	while( !feof( fp )) {
+	while( !tf.EndOfFile() ) {
 		char buf[512];
-		fgets( buf, 512, fp );
+		tf.ReadLine( buf, sizeof(buf) );
 		strlwr( buf );
-		TrimLineEnding( buf );
 
 		const char * ptr;
 
@@ -177,7 +120,6 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 		else if( ptr = strstr( buf, "ns" ))
 			mtl->Ns = (float)atof( ptr+3 );
 	}
-	fclose( fp );
 }
 
 bool ObjectFileLoader::Load( const wchar_t * pwFilename )
@@ -188,35 +130,35 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 	wstring wFilenameCached( pwFilename );
 	wFilenameCached += L".cached";
 
-	FILE * fp = _wfopen( wFilenameCached.c_str(), L"rb" );
+	NanoCore::IFile * fp = NanoCore::FS::Open( wFilenameCached.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
-
 		int len;
-		fread( &len, sizeof(len), 1, fp );
+		fp->Read( &len, sizeof(len) );
 
 		m_Mtllib.resize( len );
-		fread( &m_Mtllib[0], len, 1, fp );
+		fp->Read( &m_Mtllib[0], len );
 
-		fread( &m_PositionCount, sizeof(m_PositionCount), 1, fp );
-		fread( &m_UVCount, sizeof(m_UVCount), 1, fp );
-		fread( &m_TriangleCount, sizeof(m_TriangleCount), 1, fp );
+		fp->Read( &m_PositionCount, sizeof(m_PositionCount) );
+		fp->Read( &m_UVCount, sizeof(m_UVCount) );
+		fp->Read( &m_TriangleCount, sizeof(m_TriangleCount) );
 
 		EraseContainer( m_Positions );
 		for( int count = m_PositionCount; count > 0; count -= BUCKET_SIZE ) {
 			m_Positions.push_back( new float3[BUCKET_SIZE] );
-			fread( m_Positions.back(), Min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
+			fp->Read( m_Positions.back(), Min( BUCKET_SIZE, count )*sizeof(float3) );
 		}
 		EraseContainer( m_UVs );
 		for( int count = m_UVCount; count > 0; count -= BUCKET_SIZE ) {
 			m_UVs.push_back( new float2[BUCKET_SIZE] );
-			fread( m_UVs.back(), Min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
+			fp->Read( m_UVs.back(), Min( BUCKET_SIZE, count )*sizeof(float2) );
 		}
 		EraseContainer( m_Triangles );
 		for( int count = m_TriangleCount; count > 0; count -= BUCKET_SIZE ) {
 			m_Triangles.push_back( new Triangle[BUCKET_SIZE] );
-			fread( m_Triangles.back(), Min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
+			fp->Read( m_Triangles.back(), Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 		}
-		fclose( fp );
+		delete fp;
+
 		NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
 
 		wstring name = NanoCore::StrGetPath( pwFilename );
@@ -226,9 +168,10 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		return true;
 	}
 
-	TextFileReadStream f( pwFilename );
-	if( !f.Exist())
+	fp = NanoCore::FS::Open( pwFilename, NanoCore::FS::efRead );
+	if( !fp )
 		return false;
+	NanoCore::TextFile tf( fp );
 
 	m_PositionCount = m_UVCount = m_TriangleCount = 0;
 
@@ -237,9 +180,8 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 	aabb box;
 
 	char line[1024];
-	while( !f.EndOfFile()) {
-
-		f.ReadLine( line );
+	while( !tf.EndOfFile()) {
+		tf.ReadLine( line, 1024 );
 		lineNum++;
 
 		switch( line[0] ) {
@@ -322,39 +264,40 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 				break;
 			}
 		}
-		m_Progress = int( int64(f.GetOffset()) * 100 / int64(f.GetSize()));
+		m_Progress = int( tf.Tell() * 100 / tf.GetSize() );
 	}
 	NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
 	NanoCore::DebugOutput( "\tbox min: %0.3f, %0.3f, %0.3f\n\tbox max: %0.3f, %0.3f, %0.3f\n", box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z );
 	m_Progress = 100;
-	Save( wFilenameCached.c_str());
+	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the OBJ file into binary for faster loading?", true ))
+		Save( wFilenameCached.c_str());
 	return true;
 }
 
 void ObjectFileLoader::Save( const wchar_t * pwFilename )
 {
-	FILE * fp = _wfopen( pwFilename, L"wb" );
+	NanoCore::IFile * fp = NanoCore::FS::Open( pwFilename, NanoCore::FS::efWriteTrunc );
 	if( !fp )
 		return;
 
 	int len = m_Mtllib.size();
-	fwrite( &len, sizeof(len), 1, fp );
-	fwrite( &m_Mtllib[0], len, 1, fp );
+	fp->Write( &len, sizeof(len) );
+	fp->Write( &m_Mtllib[0], len );
 
-	fwrite( &m_PositionCount, sizeof(m_PositionCount), 1, fp );
-	fwrite( &m_UVCount, sizeof(m_UVCount), 1, fp );
-	fwrite( &m_TriangleCount, sizeof(m_TriangleCount), 1, fp );
+	fp->Write( &m_PositionCount, sizeof(m_PositionCount) );
+	fp->Write( &m_UVCount, sizeof(m_UVCount) );
+	fp->Write( &m_TriangleCount, sizeof(m_TriangleCount) );
 
 	for( int i=0, count = m_PositionCount; count > 0; ++i, count -= BUCKET_SIZE ) {
-		fwrite( m_Positions[i], Min( BUCKET_SIZE, count )*sizeof(float3), 1, fp );
+		fp->Write( m_Positions[i], Min( BUCKET_SIZE, count )*sizeof(float3) );
 	}
 	for( int i=0, count = m_UVCount; count > 0; ++i, count -= BUCKET_SIZE ) {
-		fwrite( m_UVs[i], Min( BUCKET_SIZE, count )*sizeof(float2), 1, fp );
+		fp->Write( m_UVs[i], Min( BUCKET_SIZE, count )*sizeof(float2) );
 	}
 	for( int i=0, count = m_TriangleCount; count > 0; ++i, count -= BUCKET_SIZE ) {
-		fwrite( m_Triangles[i], Min( BUCKET_SIZE, count )*sizeof(Triangle), 1, fp );
+		fp->Write( m_Triangles[i], Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 	}
-	fclose( fp );
+	delete fp;
 }
 
 IObjectFileLoader * IObjectFileLoader::Create()

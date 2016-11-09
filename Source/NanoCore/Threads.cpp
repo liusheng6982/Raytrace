@@ -1,5 +1,4 @@
 #include <Windows.h>
-#include <stdio.h>
 #include <stdarg.h>
 #include "Threads.h"
 #include "String.h"

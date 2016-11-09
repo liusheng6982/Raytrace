@@ -228,7 +228,7 @@ void WindowMain::ClearMenu( int menu ) {
 	}
 }
 
-bool WindowMain::MessageBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel ) {
+bool WindowMain::MsgBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel ) {
 	return ::MessageBox( g_hWnd, text, caption, bOkCancel ? MB_OKCANCEL : MB_OK ) == IDOK;
 }
 

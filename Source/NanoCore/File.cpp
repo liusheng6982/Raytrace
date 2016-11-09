@@ -164,4 +164,12 @@ int TextFile::GetOpenMode() {
 	return m_pFile->GetOpenMode();
 }
 
+uint64 TextFile::Tell() {
+	return m_pFile->Tell();
+}
+
+uint64 TextFile::GetSize() {
+	return m_pFile->GetSize();
+}
+
 }

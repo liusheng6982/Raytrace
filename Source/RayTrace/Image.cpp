@@ -1,7 +1,6 @@
 #include <windows.h>
-#include <stdio.h>
-#include <string.h>
 #include <NanoCore/Mathematics.h>
+#include <NanoCore/File.h>
 #include "Image.h"
 
 
@@ -40,35 +39,28 @@ int Image::WriteAsBMP( const wchar_t * name ) {
 	if( m_bpp != 24 )
 		return 0;
 
-	FILE * fp = _wfopen( name, L"wb" );
+	NanoCore::IFile * fp = NanoCore::FS::Open( name, NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
 	if( !fp )
 		return 0;
 
 	char sig[2] = {'B','M'};
-	fwrite( sig, 1, 2, fp );
+	fp->Write( sig, 2 );
 
 	int pw = m_width*3;
 	if( pw % 4 ) pw += 4 - pw%4;
 
-	int size = 14 + 40 + pw*m_height;
-	fwrite( &size, 1, 4, fp );
-
-	int zero = 0;
-	fwrite( &zero, 1, 4, fp );
-
-	int offset = 14+40;
-	fwrite( &offset, 1, 4, fp );
+	int hdr[] = { 14 + 40 + pw*m_height, 0, 14+40 };
+	fp->Write( hdr, sizeof(hdr) );
 
 	BITMAPINFOHEADER bmpih = { 40, m_width, m_height, 1, 24, 0, pw*m_height, 0, 0, 0, 0 };
-	fwrite( &bmpih, 1, 40, fp );
+	fp->Write( &bmpih, 40 );
 
-	uint8 pad=0;
+	uint32 pad=0;
 	for( int i=0; i<m_height; ++i ) {
-		fwrite( m_pBuffer + i*m_width*3, 1, m_width*3, fp );
-		for( int j=0; j<pw-m_width*3; ++j )
-			fwrite( &pad, 1, 1, fp );
+		fp->Write( m_pBuffer + i*m_width*3, m_width*3 );
+		fp->Write( &pad, pw - m_width*3 );
 	}
-	fclose( fp );
+	delete fp;
 	return 1;
 }
 
@@ -152,24 +144,24 @@ void Image::BilinearFilterRect( int x, int y, int w, int h ) {
 }
 
 bool Image::Load( const wchar_t * name ) {
-	FILE * fp = _wfopen( name, L"rb" );
+	NanoCore::IFile * fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
 	if( !fp )
 		return false;
 
 	char sig[2] = {'B','M'};
-	fread( sig, 1, 2, fp );
+	fp->Read( sig, 2 );
 	if( sig[0] != 'B' || sig[1] != 'M' ) {
-		fclose( fp );
+		delete fp;
 		return false;
 	}
 
-	fseek( fp, 14, SEEK_SET );
+	fp->Seek( 14 );
 
 	BITMAPINFOHEADER bmpih;
-	fread( &bmpih, sizeof(bmpih), 1, fp );
+	fp->Read( &bmpih, sizeof(bmpih) );
 
 	if( bmpih.biBitCount != 24 || bmpih.biPlanes != 1 ) {
-		fclose( fp );
+		delete fp;
 		return false;
 	}
 
@@ -179,16 +171,16 @@ bool Image::Load( const wchar_t * name ) {
 
 	int pw = m_width*3;
 	if( pw % 4 ) pw += 4 - pw%4;
-	int pad = pw - m_width*3;
 
 	delete[] m_pBuffer;
 	m_pBuffer = new uint8[m_width*3*m_height];
 
+	uint64 pos = fp->Tell();
 	for( int i=0; i<m_height; ++i ) {
-		fread( m_pBuffer + i*m_width*3, 1, m_width*3, fp );
-		fseek( fp, pad, SEEK_CUR );
+		fp->Seek( pos + i*pw );
+		fp->Read( m_pBuffer + i*m_width*3, m_width*3 );
 	}
-	fclose( fp );
+	delete fp;
 	return 1;
 }
 

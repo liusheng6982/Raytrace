@@ -1,5 +1,7 @@
 #include "KDTree.h"
 #include <string>
+#include <NanoCore/File.h>
+#include <NanoCore/Windows.h>
 
 using namespace std;
 
@@ -23,24 +25,24 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 	wstring wFile = pModel->GetFilename();
 	wFile += L".kdtree";
 
-	FILE * fp = _wfopen( wFile.c_str(), L"rb" );
+	NanoCore::IFile * fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
 		int numTris, numNodes;
-		fread( &numTris, sizeof(numTris), 1, fp );
-		fread( &numNodes, sizeof(numNodes), 1, fp );
-		fread( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode), 1, fp );
+		fp->Read( &numTris, sizeof(numTris) );
+		fp->Read( &numNodes, sizeof(numNodes) );
+		fp->Read( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode) );
 
 		if( m_maxTrianglesPerNode == maxTrianglesPerNode ) {
 			m_Triangles.resize( numTris );
 			m_Tree.resize( numNodes );
 			for( int i=0; i<numTris; ++i )
-				fread( &m_Triangles[i], sizeof(Triangle), 1, fp );
+				fp->Read( &m_Triangles[i], sizeof(Triangle) );
 			for( int i=0; i<numNodes; ++i )
-				fread( &m_Tree[i], sizeof(Node), 1, fp );
-			fclose( fp );
+				fp->Read( &m_Tree[i], sizeof(Node) );
+			delete fp;
 			return;
 		}
-		fclose( fp );
+		delete fp;
 	}
 
 	const int numTris = pModel->GetNumTriangles();
@@ -83,18 +85,20 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 	m_maxTrianglesPerNode = maxTrianglesPerNode;
 	BuildTree( 0, numTris );
 
-	fp = _wfopen( wFile.c_str(), L"wb" );
-	if( fp ) {
-		int numTris = m_Triangles.size();
-		int numNodes = m_Tree.size();
-		fwrite( &numTris, sizeof(numTris), 1, fp );
-		fwrite( &numNodes, sizeof(numNodes), 1, fp );
-		fwrite( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode), 1, fp );
-		for( int i=0; i<numTris; ++i )
-			fwrite( &m_Triangles[i], sizeof(Triangle), 1, fp );
-		for( int i=0; i<numNodes; ++i )
-			fwrite( &m_Tree[i], sizeof(Node), 1, fp );
-		fclose( fp );
+	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the KD-tree for faster loading?", true )) {
+		fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efWriteTrunc );
+		if( fp ) {
+			int numTris = m_Triangles.size();
+			int numNodes = m_Tree.size();
+			fp->Write( &numTris, sizeof(numTris) );
+			fp->Write( &numNodes, sizeof(numNodes) );
+			fp->Write( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode) );
+			for( int i=0; i<numTris; ++i )
+				fp->Write( &m_Triangles[i], sizeof(Triangle) );
+			for( int i=0; i<numNodes; ++i )
+				fp->Write( &m_Tree[i], sizeof(Node) );
+			delete fp;
+		}
 	}
 }
 

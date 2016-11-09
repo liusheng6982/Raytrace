@@ -29,6 +29,9 @@ public:
 	uint32 Write( const char * fmt, ... );
 	int    GetOpenMode();
 
+	uint64 Tell();
+	uint64 GetSize();
+
 private:
 	IFile * m_pFile;
 	char  * m_pBuffer;
@@ -40,6 +43,7 @@ namespace FS {
 		efRead  = 1 << 0,
 		efWrite = 1 << 1,
 		efTrunc = 1 << 2,
+		efWriteTrunc = efWrite | efTrunc,
 	};
 
 	IFile * Open( const wchar_t * name, int mode );

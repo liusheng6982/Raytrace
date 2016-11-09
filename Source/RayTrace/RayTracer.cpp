@@ -390,7 +390,7 @@ void SpawnProgressiveJobsJob::Execute() {
 		JobsLog( "SpawnProgressiveJobsJob: adding self\n" );
 		NanoCore::JobManager::AddJob( this, 0 );
 	} else {
-		NanoCore::DebugOutput( "Rendering finished for %d ms\n", (int)NanoCore::TickToMicroseconds( NanoCore::GetTicks() - t0 ));
+		NanoCore::DebugOutput( "Rendering finished for %0.3f s\n", float(NanoCore::TickToMicroseconds( NanoCore::GetTicks() - t0 )) / 1000.0f );
 	}
 }
 
@@ -478,10 +478,10 @@ void Raytracer::LoadAsBmp( std::wstring path, std::string file, Image & img ) {
 		return;
 	}
 	std::wstring wfile( file.begin(), file.end());
-	path += wfile;
+	path += wfile; 
 	NanoCore::StrReplaceExtension( path, L"bmp" );
 	img.Load( path.c_str());
-
+	 
 	m_ImageCountLoaded++;
 	m_ImageSizeLoaded += img.GetWidth() * img.GetHeight() * 3;
 }
