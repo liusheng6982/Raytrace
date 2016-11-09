@@ -1,3 +1,9 @@
+- Top priority
+	- mip maps
+	- GI bounces
+	- Sky / sun info - specify sun position/strength/color + sky strength/color
+	- Sky cubemap?
+
 - Windows
 	+ MessageBox
 	- common parent class 'Window'
@@ -11,7 +17,7 @@
 	- make color picker
 
 - NanoCore
-	- File class
+	+ File class
 	- move Image here, make it load BMP/JPG
 	- move Camera here
 
@@ -21,8 +27,9 @@
 	- raytracing times
 
 - Textures
-	- parsing materials
-	- loading JPG / BMP files
+	+ parsing materials
+	- loading JPG
+	+ loading of BMP files
 	- compute mipmaps
 	- find normalmap/gloss maps
 
@@ -34,5 +41,9 @@
 	- produce BRDF for the glossy model we want - PBR, PDF, etc.
 	- GI bounces
 	- sun / sky colors and strengths (save to file)
+
+
+
+
 
 - NanoEngine!
