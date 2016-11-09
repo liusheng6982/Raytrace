@@ -26,3 +26,7 @@ void  ncSinCos( float x, float & s, float & c )
 	s = sinf( x );
 	c = cosf( x );
 }
+
+float ncFloor( float x ) {
+	return floorf( x );
+}

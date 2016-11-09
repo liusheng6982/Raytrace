@@ -21,9 +21,15 @@ struct Triangle
 	float dot00, dot01, dot11, invDenom;
 #endif
 
-	float2  uv[3];
-	int       mtl;
-	int       triangleID;
+	float2 uv[3];
+	int    mtl;
+	int    triangleID;
+
+	float2 GetUV( float2 barycentric_pos ) const {
+		float2 uv10 = uv[1] - uv[0];
+		float2 uv20 = uv[2] - uv[0];
+		return uv10 * barycentric_pos.x + uv20 * barycentric_pos.y + uv[0];
+	}
 };
 
 struct RayInfo
@@ -32,7 +38,8 @@ struct RayInfo
 	float hitlen;
 	float3  n;
 	const Triangle * tri;
-	float bari_u, bari_v;
+	float2 barycentric;
+	float3 hit;
 
 	RayInfo() : hitlen(1000000.0f), tri(0) {}
 

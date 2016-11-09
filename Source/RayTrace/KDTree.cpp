@@ -300,11 +300,11 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray )
 		if( u < -EPSILON || v < -EPSILON || u+v > 1+EPSILON ) continue;
 
 		if( k < ray.hitlen ) {
-			ray.hitlen = k;
 			ray.n = t.n;
+			ray.barycentric = float2( u, v );
+			ray.hit = hit;
+			ray.hitlen = k;
 			ray.tri = &t;
-			ray.bari_u = u;
-			ray.bari_v = v;
 		}
 #endif
 	}

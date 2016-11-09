@@ -350,6 +350,9 @@ public:
 		ri.Init( x, GetHeight() - y, m_Camera, GetWidth(), GetHeight() );
 		m_KDTree.Intersect( ri );
 
+		m_Raytracer.m_DebugX = x;
+		m_Raytracer.m_DebugY = y;
+
 		NanoCore::DebugOutput( "Triangle picker:\n" );
 		if( ri.tri ) {
 			NanoCore::DebugOutput( "  triangleID: %d\n\n", ri.tri->triangleID );

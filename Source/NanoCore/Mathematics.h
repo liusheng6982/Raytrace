@@ -10,6 +10,7 @@ float ncTan( float x );
 float ncSin( float x );
 float ncCos( float x );
 void  ncSinCos( float x, float & s, float & c );
+float ncFloor( float x );
 
 
 struct float2

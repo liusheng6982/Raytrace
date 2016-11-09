@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <NanoCore/Mathematics.h>
 #include "Image.h"
 
 
@@ -100,6 +101,19 @@ void Image::SetPixel( int x, int y, int * pix ) {
 		case 24: p[0] = pix[0]; p[1] = pix[1]; p[2] = pix[2]; break;
 		case 32: p[0] = pix[0]; p[1] = pix[1]; p[2] = pix[2]; p[3] = pix[3]; break;
 	}
+}
+
+void Image::GetPixel( float u, float v, int * pix ) const {
+	u -= ncFloor( u );
+	v -= ncFloor( v );
+
+	int rw = GetWidth()-1, rh = GetHeight()-1;
+
+	u *= rw;
+	v *= rh;
+
+	int x = Clamp( int(u), 0, rw ), y = Clamp( int(v), 0, rh );
+	GetPixel( x, y, pix );
 }
 
 static void Interpolate( int * p0, int * p1, int coef1kRange, int * result ) {

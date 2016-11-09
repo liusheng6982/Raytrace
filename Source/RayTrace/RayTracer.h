@@ -42,7 +42,7 @@ public:
 	float m_SunDiskAngle;
 	int m_NumThreads;
 
-	int m_SelectedTriangle;
+	int m_SelectedTriangle, m_DebugX, m_DebugY;
 
 	Image  * m_pImage;
 	Camera * m_pCamera;

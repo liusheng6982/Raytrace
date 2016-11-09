@@ -5,6 +5,14 @@
 	#define NULL 0
 #endif
 
+#ifdef min
+	#undef min
+#endif
+
+#ifdef max
+	#undef max
+#endif
+
 typedef unsigned char      uint8;
 typedef signed char        int8;
 typedef unsigned short     uint16;
@@ -26,5 +34,6 @@ namespace NanoCore {
 
 template< typename X > X Min( X a, X b ) { return (a<b) ? a : b; }
 template< typename X > X Max( X a, X b ) { return (a>b) ? a : b; }
+template< typename X > X Clamp( X a, X min, X max ) { return (a<min) ? min : ( (a>max) ? max : a ); }
 
 #endif

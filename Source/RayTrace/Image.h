@@ -25,8 +25,10 @@ public:
 	const uint8 * GetImageAt( int x, int y ) const;
 	uint8 * GetImageAt( int x, int y );
 
-	void    GetPixel( int x, int y, int * pix ) const;
-	void    SetPixel( int x, int y, int * pix );
+	void GetPixel( float u, float v, int * pix ) const;
+	void GetPixel( int x, int y, int * pix ) const;
+	void SetPixel( int x, int y, int * pix );
+
 
 	bool Load( const wchar_t * name );
 	int  WriteAsBMP( const wchar_t * name );

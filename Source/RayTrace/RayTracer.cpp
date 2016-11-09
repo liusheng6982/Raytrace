@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <NanoCore/File.h>
 
+#pragma optimize( "", off )
+
 //#define JobsLog NanoCore::DebugOutput
 #define JobsLog
 
@@ -225,9 +227,29 @@ static void ComputeProgressiveDistribution( int size, std::vector<int> & order )
 
 void Raytracer::RaytracePixel( int x, int y, int * pixel )
 {
+	if( x == m_DebugX && y == m_DebugY ) {
+		NanoCore::DebugOutput( "%d", 1 );
+	}
+
 	RayInfo ri;
 	ri.Init( x, y, *m_pCamera, m_pImage->GetWidth(), m_pImage->GetHeight() );
-	m_pKDTree->Intersect( ri );
+
+	for( ;; ) {
+		m_pKDTree->Intersect( ri );
+		if( ri.tri && m_Materials[ri.tri->mtl].mapAlpha.GetWidth()) {
+			float2 uv = ri.tri->GetUV( ri.barycentric );
+
+			int alpha[3];
+			m_Materials[ri.tri->mtl].mapAlpha.GetPixel( uv.x, uv.y, alpha );
+
+			if( !alpha[0] ) {
+				ri.pos = ri.hit + ri.dir;
+				ri.hitlen = 10000000.0f;
+			} else
+				break;
+		} else
+			break;
+	}
 
 	if( ri.tri ) {
 		float shade = 255.0f;
@@ -282,25 +304,12 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				break;
 			}
 			case ePreviewShading_Diffuse: {
-				float2 uv10 = ri.tri->uv[1] - ri.tri->uv[0];
-				float2 uv20 = ri.tri->uv[2] - ri.tri->uv[0];
-				float2 uv = uv10 * ri.bari_u + uv20 * ri.bari_v + ri.tri->uv[0];
-
-				float u = uv.x - floorf(uv.x);
-				float v = uv.y - floorf(uv.y);
-
+				float2 uv = ri.tri->GetUV( ri.barycentric );
 				if( ri.tri->mtl>=0 ) {
 					const Material & mtl = m_Materials[ri.tri->mtl];
 					const Image & img = mtl.mapDiffuse;
 					if( img.GetWidth()) {
-						u *= img.GetWidth()-1;
-						v *= img.GetHeight()-1;
-						int x = int(u);
-						int y = int(v);
-						if( x >= img.GetWidth()) x = img.GetWidth()-1;
-						if( y >= img.GetHeight()) y = img.GetHeight()-1;
-						//y = img.GetHeight() - y - 1;
-						img.GetPixel( x, y, pixel );
+						img.GetPixel( uv.x, uv.y, pixel );
 					} else {
 						pixel[0] = int(mtl.Kd.x * 255.0f);
 						pixel[1] = int(mtl.Kd.y * 255.0f);
