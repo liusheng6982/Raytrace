@@ -3,6 +3,9 @@ Temp/
 Data/
 *.suo
 *.user
+*.ipch
+*.sdf
+*.opensdf
 
 # Windows image file caches
 Thumbs.db
