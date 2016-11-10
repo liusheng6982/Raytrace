@@ -1,6 +1,7 @@
 Bin/
 Temp/
 Data/
+Source/3rdpartyu/
 *.suo
 *.user
 *.ipch
