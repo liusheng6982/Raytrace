@@ -92,33 +92,38 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 		tf.ReadLine( buf, sizeof(buf) );
 		strlwr( buf );
 
-		const char * ptr;
-
 		Material * mtl = m_Materials.empty() ? NULL : &m_Materials.back();
 
-		if( !strncmp( buf, "newmtl", 6 )) {
-			m_MaterialToIndex[ buf+7 ] = (int)m_Materials.size();
+		std::vector<std::string> words;
+		NanoCore::StrSplit( buf, " \t", words );
+		if( words.empty())
+			continue;
+
+#define READ_VEC3(v) v.x = (float)atof(words[1].c_str()), v.y = (float)atof(words[2].c_str()), v.z = (float)atof(words[3].c_str())
+
+		if( !strcmp( words[0].c_str(), "newmtl" )) {
+			m_MaterialToIndex[ words[1] ] = (int)m_Materials.size();
 			m_Materials.push_back(Material());
-		} else if( ptr = strstr( buf, "map_kd" ))
-			mtl->mapKd = ptr+7;
-		else if( ptr = strstr( buf, "map_ks" ))
-			mtl->mapKs = ptr+7;
-		else if( ptr = strstr( buf, "map_bump" ))
-			mtl->mapBump = ptr+9;
-		else if( ptr = strstr( buf, "map_d" ))
-			mtl->mapAlpha = ptr+6;
-		else if( ptr = strstr( buf, "bump" ))
-			mtl->mapBump = ptr+5;
-		else if( ptr = strstr( buf, "kd" ))
-			sscanf( ptr+3, "%f %f %f", &mtl->Kd.x, &mtl->Kd.y, &mtl->Kd.z );
-		else if( ptr = strstr( buf, "ks" ))
-			sscanf( ptr+3, "%f %f %f", &mtl->Ks.x, &mtl->Ks.y, &mtl->Ks.z );
-		else if( ptr = strstr( buf, "ke" ))
-			sscanf( ptr+3, "%f %f %f", &mtl->Ke.x, &mtl->Ke.y, &mtl->Ke.z );
-		else if( ptr = strstr( buf, "tr" ))
-			mtl->Transparency = (float)atof( buf+3 );
-		else if( ptr = strstr( buf, "ns" ))
-			mtl->Ns = (float)atof( ptr+3 );
+		} else if( !strcmp( words[0].c_str(), "map_kd" ))
+			mtl->mapKd = words[ words.size()-1 ].c_str();
+		else if( !strcmp( words[0].c_str(), "map_ks" ))
+			mtl->mapKs = words[ words.size()-1 ].c_str();
+		else if( !strcmp( words[0].c_str(), "map_bump" ))
+			mtl->mapBump = words[ words.size()-1 ].c_str();
+		else if( !strcmp( words[0].c_str(), "map_d" ))
+			mtl->mapAlpha = words[ words.size()-1 ].c_str();
+		else if( !strcmp( words[0].c_str(), "bump" ))
+			mtl->mapBump = words[ words.size()-1 ].c_str();
+		else if( words[0] == "kd" )
+			READ_VEC3(mtl->Kd);
+		else if( words[0] == "ks" )
+			READ_VEC3(mtl->Ks);
+		else if( words[0] == "ke" )
+			READ_VEC3(mtl->Ke);
+		else if( words[0] == "tr" )
+			mtl->Transparency = (float)atof( words[1].c_str() );
+		else if( words[0] == "ns" )
+			mtl->Ns = (float)atof( words[1].c_str() );
 	}
 }
 

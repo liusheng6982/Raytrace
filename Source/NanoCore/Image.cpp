@@ -1,9 +1,14 @@
 #include <windows.h>
-#include <NanoCore/Mathematics.h>
-#include <NanoCore/File.h>
+#include "Mathematics.h"
+#include "File.h"
 #include "Image.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "3rdparty/stb/stb_image.h"
 
+
+
+namespace NanoCore {
 
 Image::Image() : m_pBuffer(NULL), m_width(0), m_height(0), m_bpp(0) {}
 
@@ -143,7 +148,23 @@ void Image::BilinearFilterRect( int x, int y, int w, int h ) {
 }
 
 bool Image::Load( const wchar_t * name ) {
-	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
+	Clear();
+
+	int n;
+	std::string file = StrWcsToMbs( name );
+	uint8 * data = stbi_load( file.c_str(), &m_width, &m_height, &n, 0 );
+
+	if( data ) {
+		m_bpp = n*8;
+		m_pBuffer = new uint8[m_width * m_height * n];
+		memcpy( m_pBuffer, data, m_width*m_height*n );
+		stbi_image_free( data );
+
+		return true;
+	}
+	return false;
+
+/*	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
 	if( !fp )
 		return false;
 
@@ -176,11 +197,13 @@ bool Image::Load( const wchar_t * name ) {
 		fp->Seek( pos + i*pw );
 		fp->Read( m_pBuffer + i*m_width*3, m_width*3 );
 	}
-	return 1;
+	return 1;*/
 }
 
 void Image::Clear() {
 	delete[] m_pBuffer;
 	m_pBuffer = NULL;
 	m_width = m_height = m_bpp = 0;
+}
+
 }

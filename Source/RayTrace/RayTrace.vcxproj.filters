@@ -6,7 +6,6 @@
     <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="Image.cpp" />
     <ClCompile Include="RayTracer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -14,7 +13,6 @@
     <ClInclude Include="ObjectFileLoader.h" />
     <ClInclude Include="KDTree.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="Image.h" />
     <ClInclude Include="RayTracer.h" />
   </ItemGroup>
   <ItemGroup>

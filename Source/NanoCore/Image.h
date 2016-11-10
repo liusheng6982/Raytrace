@@ -1,7 +1,11 @@
-#ifndef __INC_RAYTRACE_IMAGE
-#define __INC_RAYTRACE_IMAGE
+#ifndef __INC_NANOCORE_IMAGE
+#define __INC_NANOCORE_IMAGE
 
-#include <NanoCore/Common.h>
+#include "Common.h"
+
+
+
+namespace NanoCore {
 
 class Image
 {
@@ -10,8 +14,6 @@ public:
 	Image( int w, int h, int bpp );
 	Image( const Image & img );
 	~Image() { delete[] m_pBuffer; }
-
-
 
 	void Init( int w, int h, int bpp );
 	void Fill( uint32 color );
@@ -37,5 +39,7 @@ private:
 	int     m_width,m_height,m_bpp;
 	uint8 * m_pBuffer;
 };
+
+}
 
 #endif

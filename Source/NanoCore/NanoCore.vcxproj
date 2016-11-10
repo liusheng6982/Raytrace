@@ -132,8 +132,10 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="3rdparty\stb\stb_image.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="File.h" />
+    <ClInclude Include="Image.h" />
     <ClInclude Include="Jobs.h" />
     <ClInclude Include="Mathematics.h" />
     <ClInclude Include="Serialize.h" />
@@ -143,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="File.cpp" />
+    <ClCompile Include="Image.cpp" />
     <ClCompile Include="Jobs.cpp" />
     <ClCompile Include="Mathematics.cpp" />
     <ClCompile Include="Serialize.cpp" />

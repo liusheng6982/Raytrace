@@ -3,6 +3,7 @@
 #include "RayTracer.h"
 #include <stdlib.h>
 #include <NanoCore/File.h>
+#include <NanoCore/String.h>
 
 #pragma optimize( "", off )
 
@@ -307,7 +308,7 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 				float2 uv = ri.tri->GetUV( ri.barycentric );
 				if( ri.tri->mtl>=0 ) {
 					const Material & mtl = m_Materials[ri.tri->mtl];
-					const Image & img = mtl.mapDiffuse;
+					const NanoCore::Image & img = mtl.mapDiffuse;
 					if( img.GetWidth()) {
 						img.GetPixel( uv.x, uv.y, pixel );
 					} else {
@@ -424,7 +425,7 @@ void Raytracer::Stop()
 	NanoCore::JobManager::Wait( NanoCore::JobManager::efClearPendingJobs | NanoCore::JobManager::efDisableJobAddition );
 }
 
-void Raytracer::Render( Camera & camera, Image & image, KDTree & kdTree )
+void Raytracer::Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree )
 {
 	if( kdTree.Empty())
 		return;
@@ -472,7 +473,7 @@ void Raytracer::GetStatus( std::wstring & status ) {
 	}
 }
 
-void Raytracer::LoadAsBmp( std::wstring path, std::string file, Image & img ) {
+void Raytracer::LoadAsBmp( std::wstring path, std::string file, NanoCore::Image & img ) {
 	if( file.empty()) {
 		img.Clear();
 		return;
@@ -502,10 +503,16 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 		dst.Ke = src->Ke;
 		dst.Tr = src->Transparency;
 
-		LoadAsBmp( path, src->mapKd, dst.mapDiffuse );
-		LoadAsBmp( path, src->mapKs, dst.mapSpecular );
-		LoadAsBmp( path, src->mapBump, dst.mapBump );
-		LoadAsBmp( path, src->mapAlpha, dst.mapAlpha );
+		if( !src->mapKd.empty())
+			dst.mapDiffuse.Load( (path + NanoCore::StrMbsToWcs( src->mapKd.c_str())).c_str() );
+		if( !src->mapKs.empty())
+			dst.mapSpecular.Load( (path + NanoCore::StrMbsToWcs( src->mapKs.c_str())).c_str() );
+		if( !src->mapBump.empty())
+			dst.mapBump.Load( (path + NanoCore::StrMbsToWcs( src->mapBump.c_str())).c_str() );
+		if( !src->mapAlpha.empty())
+			dst.mapAlpha.Load( (path + NanoCore::StrMbsToWcs( src->mapAlpha.c_str())).c_str() );
+
+		//LoadAsBmp( path, src->mapKs, dst.mapSpecular );
 	}
 	NanoCore::DebugOutput( "%d images loaded (%d Mb)\n", m_ImageCountLoaded, m_ImageSizeLoaded / (1024*1024) );
 }

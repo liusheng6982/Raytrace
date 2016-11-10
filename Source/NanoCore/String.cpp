@@ -76,4 +76,25 @@ std::wstring StrMbsToWcs( const char * str ) {
 	return s;
 }
 
+std::string  StrWcsToMbs( const wchar_t * str ) {
+	std::string s( str, str + wcslen(str) );
+	return s;
+}
+
+void StrSplit( const char * str, const char * separators, std::vector<std::string> & result ) {
+	bool sep[128] = { false };
+	while( *separators ) {
+		sep[*separators++] = true;
+	}
+
+	for( int i=0,j; str[i]; ) {
+		while( sep[str[i]] ) ++i;
+		for( j=i; str[j] && !sep[str[j]]; ++j );
+
+		std::string s( str+i, j-i );
+		result.push_back( s );
+		i = j;
+	}
+}
+
 }

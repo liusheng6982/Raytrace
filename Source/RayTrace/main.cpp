@@ -2,6 +2,7 @@
 #include <NanoCore/Windows.h>
 #include <NanoCore/File.h>
 #include <NanoCore/Serialize.h>
+#include <NanoCore/Image.h>
 #include "ObjectFileLoader.h"
 #include "KDTree.h"
 #include "RayTracer.h"
@@ -211,15 +212,16 @@ public:
 	virtual void OnSize( int w, int h )
 	{
 		m_Raytracer.Stop();
-		m_Image.Init( m_PreviewResolution, m_PreviewResolution * h / w, 24 );
-		m_bInvalidate = true;
+		if( w && h ) {
+			m_Image.Init( m_PreviewResolution, m_PreviewResolution * h / w, 24 );
+			m_bInvalidate = true;
+		}
 	}
 	virtual void OnDraw()
 	{
-		if( m_Image.GetWidth())
-		//if( m_Raytracer.IsRendering()) {
+		if( m_Image.GetWidth()) {
 			DrawImage( 0, 0, GetWidth(), GetHeight(), m_Image.GetImageAt(0,0), m_Image.GetWidth(), m_Image.GetHeight(), 24 );
-		//}
+		}
 	}
 	virtual void OnUpdate()
 	{
@@ -457,7 +459,7 @@ public:
 	std::string     m_strStatus;
 	LoadingThread   m_LoadingThread;
 	KDTree          m_KDTree;
-	Image           m_Image;
+	NanoCore::Image m_Image;
 	Camera          m_Camera;
 	Raytracer       m_Raytracer;
 	bool            m_bInvalidate;

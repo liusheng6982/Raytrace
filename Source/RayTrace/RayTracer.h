@@ -1,10 +1,11 @@
 #ifndef ___INC_RAYTRACE_RAYTRACER
 #define ___INC_RAYTRACE_RAYTRACER
 
+#include <NanoCore/Image.h>
 #include "Common.h"
 #include "Camera.h"
 #include "KDTree.h"
-#include "Image.h"
+
 
 
 
@@ -25,7 +26,7 @@ public:
 	~Raytracer();
 
 	void LoadMaterials( IObjectFileLoader & loader );
-	void Render( Camera & camera, Image & image, KDTree & kdTree );
+	void Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree );
 	bool IsRendering();
 	void Stop();
 
@@ -44,12 +45,12 @@ public:
 
 	int m_SelectedTriangle, m_DebugX, m_DebugY;
 
-	Image  * m_pImage;
+	NanoCore::Image * m_pImage;
 	Camera * m_pCamera;
 	KDTree * m_pKDTree;
 
 	struct Material {
-		Image mapDiffuse, mapSpecular, mapBump, mapAlpha;
+		NanoCore::Image mapDiffuse, mapSpecular, mapBump, mapAlpha;
 		float Tr;
 		float3 Kd, Ks, Ke;
 	};
@@ -58,7 +59,7 @@ public:
 	int m_ImageCountLoaded;
 	int m_ImageSizeLoaded;
 
-	void LoadAsBmp( std::wstring path, std::string file, Image & img );
+	void LoadAsBmp( std::wstring path, std::string file, NanoCore::Image & img );
 };
 
 #endif

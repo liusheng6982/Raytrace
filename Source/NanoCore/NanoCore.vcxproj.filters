@@ -9,6 +9,8 @@
     <ClInclude Include="File.h" />
     <ClInclude Include="Serialize.h" />
     <ClInclude Include="String.h" />
+    <ClInclude Include="Image.h" />
+    <ClInclude Include="3rdparty\stb\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Threads.cpp" />
@@ -18,5 +20,6 @@
     <ClCompile Include="File.cpp" />
     <ClCompile Include="Serialize.cpp" />
     <ClCompile Include="String.cpp" />
+    <ClCompile Include="Image.cpp" />
   </ItemGroup>
 </Project>
