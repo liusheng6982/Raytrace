@@ -34,29 +34,29 @@ static HANDLE CommonOpen( const wchar_t * name, int mode ) {
 	return ::CreateFile( name, dwAccess, dwSharing, NULL, dwCreate, 0, NULL );
 }
 
-IFile * FS::Open( const char * name, int mode ) {
+IFile::Ptr FS::Open( const char * name, int mode ) {
 	wchar_t wname[512];
 	size_t conv;
 	mbstowcs_s( &conv, wname, 512, name, strlen(name) );
 	HANDLE h = CommonOpen( wname, mode );
 	if( !h )
-		return NULL;
+		return IFile::Ptr();
 	File * f = new File();
 	f->m_hFile = h;
 	f->m_Name = wname;
 	f->m_OpenMode= mode;
-	return f;
+	return IFile::Ptr( f );
 }
 
-IFile * FS::Open( const wchar_t * name, int mode ) {
+IFile::Ptr FS::Open( const wchar_t * name, int mode ) {
 	HANDLE h = CommonOpen( name, mode );
 	if( h == INVALID_HANDLE_VALUE )
-		return NULL;
+		return IFile::Ptr();
 	File * f = new File();
 	f->m_hFile = h;
 	f->m_Name = name;
 	f->m_OpenMode= mode;
-	return f;
+	return IFile::Ptr( f );
 }
 
 uint32 File::Read( void * buf, uint32 size ) {
@@ -94,14 +94,13 @@ File::~File() {
 
 
 
-TextFile::TextFile( IFile * file ) : m_pFile(file) {
+TextFile::TextFile( IFile::Ptr file ) : m_pFile(file) {
 	m_pBuffer = new char[1024];
 	m_BufferSize = m_Position = 1024;
 }
 
 TextFile::~TextFile() {
 	delete m_pBuffer;
-	delete m_pFile;
 }
 
 bool TextFile::EndOfFile() {
@@ -136,19 +135,20 @@ uint32 TextFile::ReadLine( std::string & line ) {
 			m_BufferSize = m_pFile->Read( m_pBuffer, 1024 );
 			m_Position = 0;
 			if( !m_BufferSize ) {
-				return line.size();
+				return (uint32)line.size();
 			}
 		}
 		if( m_pBuffer[m_Position] == '\n' || m_pBuffer[m_Position] == '\r' ) {
 			if( i ) {
 				m_Position++;
-				return line.size();
+				return (uint32)line.size();
 			}
 		} else {
 			line.push_back( m_pBuffer[m_Position] );
 			i++;
 		}
 	}
+	return 0;
 }
 
 uint32 TextFile::Write( const char * fmt, ... ) {
