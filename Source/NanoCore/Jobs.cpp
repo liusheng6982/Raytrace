@@ -76,7 +76,7 @@ void WorkerThread::Run( void* ) {
 			int32 ret = AtomicDec( &ptr->count );
 			if( ret == 0 ) {
 				csScope cs( ptr->cs );
-				const int jc = ptr->dependant_jobs.size();
+				const int jc = (int)ptr->dependant_jobs.size();
 				if( jc ) {
 					AddImmediateJobs( &ptr->dependant_jobs[0], jc );
 					ptr->dependant_jobs.clear();
@@ -150,7 +150,7 @@ void AddImmediateJobs( IJob ** p, int count ) {
 	csScope cs( s_csAvailable );
 	for( int i=0; i<count; ++i )
 		s_available.push_back( p[i] );
-	for( int i=0, n=s_threads.size(); i<n; ++i )
+	for( int i=0, n=(int)s_threads.size(); i<n; ++i )
 		s_threads[i]->Resume();
 }
 
@@ -183,7 +183,7 @@ void JobManager::Wait( int flags ) {
 
 	while( true ) {
 		bool bRunning = false;
-		for( int i=0,n=s_threads.size(); i<n; ++i )
+		for( int i=0,n=(int)s_threads.size(); i<n; ++i )
 			if( s_threads[i]->IsRunning()) bRunning = true;
 		if( bRunning || s_jobsCount > 0 ) {
 			Sleep( 1 );

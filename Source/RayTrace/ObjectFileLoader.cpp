@@ -47,7 +47,7 @@ public:
 		return &m_Materials[i];
 	}
 	virtual int GetNumMaterials() {
-		return m_Materials.size();
+		return (int)m_Materials.size();
 	}
 
 	void Save( const wchar_t * pwFilename );
@@ -79,7 +79,7 @@ public:
 };
 
 void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
-	NanoCore::IFile * fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
+	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
 	if( !fp )
 		return;
 
@@ -97,7 +97,7 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 		Material * mtl = m_Materials.empty() ? NULL : &m_Materials.back();
 
 		if( !strncmp( buf, "newmtl", 6 )) {
-			m_MaterialToIndex[ buf+7 ] = m_Materials.size();
+			m_MaterialToIndex[ buf+7 ] = (int)m_Materials.size();
 			m_Materials.push_back(Material());
 		} else if( ptr = strstr( buf, "map_kd" ))
 			mtl->mapKd = ptr+7;
@@ -130,7 +130,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 	wstring wFilenameCached( pwFilename );
 	wFilenameCached += L".cached";
 
-	NanoCore::IFile * fp = NanoCore::FS::Open( wFilenameCached.c_str(), NanoCore::FS::efRead );
+	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFilenameCached.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
 		int len;
 		fp->Read( &len, sizeof(len) );
@@ -157,7 +157,6 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 			m_Triangles.push_back( new Triangle[BUCKET_SIZE] );
 			fp->Read( m_Triangles.back(), Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 		}
-		delete fp;
 
 		NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
 
@@ -276,11 +275,11 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 
 void ObjectFileLoader::Save( const wchar_t * pwFilename )
 {
-	NanoCore::IFile * fp = NanoCore::FS::Open( pwFilename, NanoCore::FS::efWriteTrunc );
+	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( pwFilename, NanoCore::FS::efWriteTrunc );
 	if( !fp )
 		return;
 
-	int len = m_Mtllib.size();
+	int len = (int)m_Mtllib.size();
 	fp->Write( &len, sizeof(len) );
 	fp->Write( &m_Mtllib[0], len );
 
@@ -297,7 +296,6 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename )
 	for( int i=0, count = m_TriangleCount; count > 0; ++i, count -= BUCKET_SIZE ) {
 		fp->Write( m_Triangles[i], Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 	}
-	delete fp;
 }
 
 IObjectFileLoader * IObjectFileLoader::Create()

@@ -29,7 +29,7 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 	switch( message ) {
 		case WM_KEYDOWN:
-			s_pWindowMain->OnKey( wParam );
+			s_pWindowMain->OnKey( (int)wParam );
 			break;
 
 		case WM_MOUSEMOVE:
@@ -362,7 +362,7 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 
 void WindowInputDialog::Show( const wchar_t * pCaption )
 {
-	int w = 800, h = m_pImpl->items.size() * 20 + 40 + 150;
+	int w = 800, h = (int)m_pImpl->items.size() * 20 + 40 + 150;
 
 	WNDCLASSEXW wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, InputDialogProc, 0, 0, g_hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, L"NanoCoreWindowInputDialog", 0 };
 	RegisterClassEx( &wcex );

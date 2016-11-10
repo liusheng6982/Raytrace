@@ -1,8 +1,13 @@
 - Top priority
+	- smart pointers in File
 	- mip maps
 	- GI bounces
 	- Sky / sun info - specify sun position/strength/color + sky strength/color
 	- Sky cubemap?
+	- depth preview mode
+	- normalmap preview mode
+	- specular preview mode
+
 
 - Windows
 	+ MessageBox

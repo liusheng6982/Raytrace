@@ -88,7 +88,7 @@ class MainWnd : public NanoCore::WindowMain
 
 	void PersistOptions( bool bLoad ) {
 		std::wstring wFile = m_wFile + L".options";
-		NanoCore::IFile * fp = NanoCore::FS::Open( wFile.c_str(), bLoad ? NanoCore::FS::efRead : NanoCore::FS::efWriteTrunc );
+		NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFile.c_str(), bLoad ? NanoCore::FS::efRead : NanoCore::FS::efWriteTrunc );
 		if( !fp )
 			return;
 
@@ -366,18 +366,18 @@ public:
 	void AddCurrentCamera() {
 		wchar_t w[128];
 		swprintf( w, 128, L"Camera %d", m_Cameras.size()+1 );
-		AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + m_Cameras.size());
+		AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + (int)m_Cameras.size());
 		m_Cameras.push_back( m_Camera );
 		SaveCameras();
 	}
 	void SaveCameras() {
 		NanoCore::XmlNode * root = new NanoCore::XmlNode( "Cameras" );
-		for( size_t i=0; i<m_Cameras.size(); ++i ) {
+		for( int i=0; i<(int)m_Cameras.size(); ++i ) {
 			root->AddChild( new NanoCore::XmlNode( "Camera" ));
 			m_Cameras[i].Serialize( root->GetChild( i ));
 		}
 		std::wstring name = m_wFile + L".cameras.xml";
-		NanoCore::IFile * f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
+		NanoCore::IFile::Ptr f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
 		if( f ) {
 			NanoCore::TextFile tf( f );
 			root->Save( tf );
@@ -388,7 +388,7 @@ public:
 		m_Cameras.clear();
 		ClearMenu( m_CamerasMenu );
 		std::wstring name = m_wFile + L".cameras.xml";
-		NanoCore::IFile * f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efRead );
+		NanoCore::IFile::Ptr f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efRead );
 		if( f ) {
 			NanoCore::TextFile tf( f );
 			NanoCore::XmlNode * root = new NanoCore::XmlNode();

@@ -9,23 +9,19 @@ using namespace std;
 
 
 
-
-KDTree::KDTree()
-{
+KDTree::KDTree() {
 }
 
-KDTree::~KDTree()
-{
+KDTree::~KDTree() {
 }
 
-void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
-{
+void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 	m_Tree.clear();
 
 	wstring wFile = pModel->GetFilename();
 	wFile += L".kdtree";
 
-	NanoCore::IFile * fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efRead );
+	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
 		int numTris, numNodes;
 		fp->Read( &numTris, sizeof(numTris) );
@@ -39,10 +35,8 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 				fp->Read( &m_Triangles[i], sizeof(Triangle) );
 			for( int i=0; i<numNodes; ++i )
 				fp->Read( &m_Tree[i], sizeof(Node) );
-			delete fp;
 			return;
 		}
-		delete fp;
 	}
 
 	const int numTris = pModel->GetNumTriangles();
@@ -88,8 +82,8 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the KD-tree for faster loading?", true )) {
 		fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efWriteTrunc );
 		if( fp ) {
-			int numTris = m_Triangles.size();
-			int numNodes = m_Tree.size();
+			size_t numTris = m_Triangles.size();
+			size_t numNodes = m_Tree.size();
 			fp->Write( &numTris, sizeof(numTris) );
 			fp->Write( &numNodes, sizeof(numNodes) );
 			fp->Write( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode) );
@@ -97,13 +91,11 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode )
 				fp->Write( &m_Triangles[i], sizeof(Triangle) );
 			for( int i=0; i<numNodes; ++i )
 				fp->Write( &m_Tree[i], sizeof(Node) );
-			delete fp;
 		}
 	}
 }
 
-int KDTree::BuildTree( int l, int r )
-{
+int KDTree::BuildTree( int l, int r ) {
 	if( l >= r )
 		return 0;
 
@@ -162,7 +154,7 @@ int KDTree::BuildTree( int l, int r )
 		}
 	}
 
-	int node = m_Tree.size();
+	int node = (int)m_Tree.size();
 	m_Tree.push_back(Node());
 
 	int left_node = BuildTree(l1, l2+1);
@@ -180,8 +172,7 @@ int KDTree::BuildTree( int l, int r )
 
 int64 rays_traced = 0;
 
-void KDTree::Intersect_r( int node_index, RayInfo & ray )
-{
+void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 	const Node & node = m_Tree[node_index];
 
 #if 1
@@ -218,49 +209,6 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray )
 	const Triangle * ptr = &m_Triangles[0] + node.startTriangle;
 	for( int i=0; i<count; ++i ) {
 		const Triangle & t = ptr[i];
-
-#ifdef COMPACT_TRIANGLES
-		float3 e1, e2, P, Q, T;
-		float det, inv_det, u, v;
-		float k;
- 
-		//Find vectors for two edges sharing V0
-		e1 = t.pos[1] - t.pos[0];
-		e2 = t.pos[2] - t.pos[0];
-		//Begin calculating determinant - also used to calculate u parameter
-		P = cross( ray.dir, e2 );
-		//if determinant is near zero, ray lies in plane of triangle
-		det = dot( e1, P );
-		//NOT CULLING
-		if( det > -EPSILON && det < EPSILON ) continue;
-		inv_det = 1.f / det;
- 
-		//calculate distance from V0 to ray origin
-		T = ray.pos - t.pos[0];
- 
-		//Calculate u parameter and test bound
-		u = dot( T, P ) * inv_det;
-		//The intersection lies outside of the triangle
-		if( u < 0.f || u > 1.f ) continue;
- 
-		//Prepare to test v parameter
-		Q = cross( T, e1 );
- 
-		//Calculate V parameter and test bound
-		v = dot( ray.dir, Q ) * inv_det;
-		//The intersection lies outside of the triangle
-		if( v < 0.f || u + v  > 1.f ) continue;
- 
-		k = dot( e2, Q ) * inv_det;
- 
-		if( k > EPSILON && k < ray.hitlen ) { //ray intersection
-			ray.hitlen = k;
-			ray.n = cross( e1, e2 );
-			ray.n.Normalize();
-			ray.tri = &t;
-		}
-
-#else
 		//(px + t.vx)*A + (py + t.vy)*B + (pz + t.vz)*C = -D
 		//t = (-D - dot(p,N)) / dot(v,N)
 
@@ -310,7 +258,6 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray )
 			ray.hitlen = k;
 			ray.tri = &t;
 		}
-#endif
 	}
 	if( node.left )
 		Intersect_r( node.left, ray );
@@ -318,15 +265,13 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray )
 		Intersect_r( node.right, ray );
 }
 
-void KDTree::Intersect( RayInfo & ray )
-{
+void KDTree::Intersect( RayInfo & ray ) {
 	ray.Clear();
 	if( !m_Tree.empty())
 		Intersect_r( 0, ray );
 }
 
-void RayInfo::Init( int x, int y, const Camera & cam, int width, int height )
-{
+void RayInfo::Init( int x, int y, const Camera & cam, int width, int height ) {
 	pos = cam.pos;
 	hitlen = 1000000000.f;
 	tri = 0;
@@ -335,8 +280,7 @@ void RayInfo::Init( int x, int y, const Camera & cam, int width, int height )
 	dir = normalize( cam.at + cam.right * kx + cam.up * ky );
 }
 
-bool KDTree::Empty()
-{
+bool KDTree::Empty() {
 	return m_Tree.empty();
 }
 

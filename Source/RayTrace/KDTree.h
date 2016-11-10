@@ -75,7 +75,7 @@ public:
 	aabb GetBBox();
 
 private:
-	int BuildTree( int l, int r );
+	int  BuildTree( int l, int r );
 	void Intersect_r( int node, RayInfo & ray );
 
 	std::vector<Triangle> m_Triangles;

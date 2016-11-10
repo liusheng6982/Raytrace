@@ -39,7 +39,7 @@ int Image::WriteAsBMP( const wchar_t * name ) {
 	if( m_bpp != 24 )
 		return 0;
 
-	NanoCore::IFile * fp = NanoCore::FS::Open( name, NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
+	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
 	if( !fp )
 		return 0;
 
@@ -60,7 +60,6 @@ int Image::WriteAsBMP( const wchar_t * name ) {
 		fp->Write( m_pBuffer + i*m_width*3, m_width*3 );
 		fp->Write( &pad, pw - m_width*3 );
 	}
-	delete fp;
 	return 1;
 }
 
@@ -144,16 +143,14 @@ void Image::BilinearFilterRect( int x, int y, int w, int h ) {
 }
 
 bool Image::Load( const wchar_t * name ) {
-	NanoCore::IFile * fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
+	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
 	if( !fp )
 		return false;
 
 	char sig[2] = {'B','M'};
 	fp->Read( sig, 2 );
-	if( sig[0] != 'B' || sig[1] != 'M' ) {
-		delete fp;
+	if( sig[0] != 'B' || sig[1] != 'M' )
 		return false;
-	}
 
 	fp->Seek( 14 );
 
@@ -161,7 +158,6 @@ bool Image::Load( const wchar_t * name ) {
 	fp->Read( &bmpih, sizeof(bmpih) );
 
 	if( bmpih.biBitCount != 24 || bmpih.biPlanes != 1 ) {
-		delete fp;
 		return false;
 	}
 
@@ -180,7 +176,6 @@ bool Image::Load( const wchar_t * name ) {
 		fp->Seek( pos + i*pw );
 		fp->Read( m_pBuffer + i*m_width*3, m_width*3 );
 	}
-	delete fp;
 	return 1;
 }
 

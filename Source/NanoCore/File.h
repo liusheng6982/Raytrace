@@ -8,6 +8,8 @@ namespace NanoCore {
 
 class IFile {
 public:
+	typedef RefCountPtr<IFile> Ptr;
+
 	virtual ~IFile() {}
 	virtual uint32 Read( void * ptr, uint32 size ) = 0;
 	virtual uint32 Write( void * ptr, uint32 size ) = 0;
@@ -20,7 +22,7 @@ public:
 
 class TextFile {
 public:
-	TextFile( IFile * file );
+	TextFile( IFile::Ptr file );
 	virtual ~TextFile();
 
 	bool   EndOfFile();
@@ -33,9 +35,9 @@ public:
 	uint64 GetSize();
 
 private:
-	IFile * m_pFile;
-	char  * m_pBuffer;
-	int     m_BufferSize, m_Position;
+	IFile::Ptr m_pFile;
+	char     * m_pBuffer;
+	int        m_BufferSize, m_Position;
 };
 
 namespace FS {
@@ -46,8 +48,8 @@ namespace FS {
 		efWriteTrunc = efWrite | efTrunc,
 	};
 
-	IFile * Open( const wchar_t * name, int mode );
-	IFile * Open( const char * name, int mode );
+	IFile::Ptr Open( const wchar_t * name, int mode );
+	IFile::Ptr Open( const char * name, int mode );
 }
 
 }

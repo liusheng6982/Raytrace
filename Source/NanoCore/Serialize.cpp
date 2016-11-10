@@ -28,7 +28,7 @@ const char * XmlNode::GetName() {
 int XmlNode::GetAttributeByName( const char * name ) {
 	for( size_t i=0, n=m_Attributes.size(); i<n; ++i ) {
 		if( m_Attributes[i].first == name )
-			return i;
+			return (int)i;
 	}
 	return -1;
 }
@@ -55,7 +55,7 @@ bool XmlNode::GetAttribute( const char * name, std::string & s ) {
 }
 
 int XmlNode::GetNumAttributes() {
-	return m_Attributes.size();
+	return (int)m_Attributes.size();
 }
 
 const char * XmlNode::GetAttributeName( int idx ) {
@@ -106,7 +106,7 @@ void XmlNode::Set( const char * str ) {
 }
 
 int XmlNode::GetNumChildren() {
-	return m_Children.size();
+	return (int)m_Children.size();
 }
 
 XmlNode * XmlNode::GetChild( int idx ) {
