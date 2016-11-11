@@ -235,13 +235,13 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 		if( !ri.tri || m_Materials.empty())
 			break;
 
-		const NanoCore::Image & img = m_Materials[ri.tri->mtl].mapAlpha;
-		if( img.GetWidth() ) {
+		const NanoCore::Image::Ptr & img = m_Materials[ri.tri->mtl].pAlphaMap;
+		if( img ) {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
 
 			int pix[4];
-			img.GetPixel( uv.x, uv.y, pix );
-			int alpha = (img.GetBpp() == 32) ? pix[3] : pix[0];
+			img->GetPixel( uv.x, uv.y, pix );
+			int alpha = (img->GetBpp() == 32) ? pix[3] : pix[0];
 
 			if( !alpha ) {
 				ri.pos = ri.hit + ri.dir;
@@ -308,9 +308,9 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
 			if( ri.tri->mtl>=0 && !m_Materials.empty()) {
 				const Material & mtl = m_Materials[ri.tri->mtl];
-				const NanoCore::Image & img = mtl.mapDiffuse;
-				if( img.GetWidth()) {
-					img.GetPixel( uv.x, uv.y, pixel );
+				const NanoCore::Image::Ptr & img = mtl.pDiffuseMap;
+				if( img && img->GetWidth()) {
+					img->GetPixel( uv.x, uv.y, pixel );
 				} else {
 					pixel[0] = int(mtl.Kd.x * 255.0f);
 					pixel[1] = int(mtl.Kd.y * 255.0f);
@@ -482,16 +482,25 @@ void Raytracer::GetStatus( std::wstring & status ) {
 	}
 }
 
-void Raytracer::LoadImage( std::wstring path, std::string file, NanoCore::Image & img ) {
-	if( file.empty()) {
-		img.Clear();
-		return;
-	}
+NanoCore::Image::Ptr Raytracer::LoadImage( std::wstring path, std::string file ) {
+	if( file.empty())
+		return NULL;
+
 	path += NanoCore::StrMbsToWcs( file.c_str() );
-	img.Load( path.c_str());
-	
-	m_ImageCountLoaded++;
-	m_ImageSizeLoaded += img.GetSize();
+
+	auto it = m_TextureMaps.find( path );
+	if( it != m_TextureMaps.end())
+		return it->second;
+
+	NanoCore::Image::Ptr pImage( new NanoCore::Image() );
+	if( pImage->Load( path.c_str()) ) {
+		m_TextureMaps[path] = pImage;
+		m_ImageCountLoaded++;
+		m_ImageSizeLoaded += pImage->GetSize();
+		return pImage;
+	}
+	NanoCore::DebugOutput( "Warning: FAILED to load image '%ls'\n", path.c_str());
+	return NULL;
 }
 
 void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
@@ -501,6 +510,7 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 
 	m_ImageCountLoaded = 0;
 	m_ImageSizeLoaded = 0;
+	m_TextureMaps.clear();
 
 	for( int i=0; i<num; ++i ) {
 		auto src = loader.GetMaterial(i);
@@ -511,12 +521,12 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 		dst.Ke = src->Ke;
 		dst.Tr = src->Transparency;
 
-		LoadImage( path, src->mapKd, dst.mapDiffuse );
-		LoadImage( path, src->mapKs, dst.mapSpecular );
-		LoadImage( path, src->mapBump, dst.mapBump );
-		LoadImage( path, src->mapAlpha, dst.mapAlpha );
-		if( !dst.mapAlpha.GetWidth() && dst.mapDiffuse.GetBpp() == 32 )
-			LoadImage( path, src->mapKd, dst.mapAlpha );
+		dst.pDiffuseMap = LoadImage( path, src->mapKd );
+		dst.pSpecularMap = LoadImage( path, src->mapKs );
+		dst.pBumpMap = LoadImage( path, src->mapBump );
+		dst.pAlphaMap = LoadImage( path, src->mapAlpha );
+		if( !dst.pAlphaMap && dst.pDiffuseMap && dst.pDiffuseMap->GetBpp() == 32 )
+			dst.pAlphaMap = dst.pDiffuseMap;
 	}
 	NanoCore::DebugOutput( "%d materials loaded\n", num );
 	NanoCore::DebugOutput( "%d images loaded (%d Mb)\n", m_ImageCountLoaded, m_ImageSizeLoaded / (1024*1024) );

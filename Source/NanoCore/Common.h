@@ -43,7 +43,8 @@ template< typename T > class RefCountPtr {
 public:
 	RefCountPtr() : m_ptr(NULL), m_pRefCount(NULL) {}
 	RefCountPtr( const RefCountPtr & other ) : m_ptr(other.m_ptr), m_pRefCount(other.m_pRefCount) {
-		m_pRefCount[0]++;
+		if( m_pRefCount )
+			m_pRefCount[0]++;
 	}
 	RefCountPtr( T * p ) : m_ptr(p) {
 		m_pRefCount = new int();
@@ -56,12 +57,13 @@ public:
 		Release();
 		m_ptr = other.m_ptr;
 		m_pRefCount = other.m_pRefCount;
-		m_pRefCount[0]++;
+		if( m_pRefCount )
+			m_pRefCount[0]++;
 	}
 	T * operator -> () {
 		return m_ptr;
 	}
-	operator bool () {
+	operator bool () const {
 		return m_ptr != NULL;
 	}
 	bool operator ! () const {
@@ -77,6 +79,8 @@ public:
 		if( m_pRefCount && --m_pRefCount[0] == 0 ) {
 			delete m_pRefCount;
 			delete m_ptr;
+			m_pRefCount = NULL;
+			m_ptr = NULL;
 		}
 	}
 };

@@ -7,9 +7,10 @@
 
 namespace NanoCore {
 
-class Image
-{
+class Image {
 public:
+	typedef RefCountPtr<Image> Ptr;
+
 	Image();
 	Image( int w, int h, int bpp );
 	Image( const Image & img );
@@ -31,7 +32,6 @@ public:
 	void GetPixel( float u, float v, int * pix ) const;
 	void GetPixel( int x, int y, int * pix ) const;
 	void SetPixel( int x, int y, int * pix );
-
 
 	bool Load( const wchar_t * name );
 	int  WriteAsBMP( const wchar_t * name );

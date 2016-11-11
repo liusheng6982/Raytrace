@@ -6,6 +6,10 @@
 #include "Camera.h"
 #include "KDTree.h"
 
+#include <vector>
+#include <map>
+#include <string>
+
 
 
 
@@ -54,14 +58,15 @@ public:
 
 	struct Material {
 		std::string name;
-		NanoCore::Image mapDiffuse, mapSpecular, mapBump, mapAlpha;
+		NanoCore::Image::Ptr pDiffuseMap, pSpecularMap, pBumpMap, pAlphaMap;
 		float Tr;
 		float3 Kd, Ks, Ke;
 	};
 	std::vector<Material> m_Materials;
+	std::map<std::wstring,NanoCore::Image::Ptr> m_TextureMaps;
 
 private:
-	void LoadImage( std::wstring path, std::string file, NanoCore::Image & img );
+	NanoCore::Image::Ptr LoadImage( std::wstring path, std::string file );
 	void RaytracePreviewPixel( int x, int y, int * pixel );
 
 	int m_ImageCountLoaded;
