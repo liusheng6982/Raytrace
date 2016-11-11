@@ -232,7 +232,7 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 
 	for( ;; ) {
 		m_pKDTree->Intersect( ri );
-		if( !ri.tri )
+		if( !ri.tri || m_Materials.empty())
 			break;
 
 		const NanoCore::Image & img = m_Materials[ri.tri->mtl].mapAlpha;
@@ -306,7 +306,7 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 		}
 		case eShading_Diffuse: {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
-			if( ri.tri->mtl>=0 ) {
+			if( ri.tri->mtl>=0 && !m_Materials.empty()) {
 				const Material & mtl = m_Materials[ri.tri->mtl];
 				const NanoCore::Image & img = mtl.mapDiffuse;
 				if( img.GetWidth()) {
