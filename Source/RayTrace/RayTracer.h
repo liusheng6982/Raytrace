@@ -36,8 +36,9 @@ public:
 
 	void GetStatus( std::wstring & status );
 
-	mutable int m_PixelCompleteCount;
-	int m_TotalPixelCount;
+	volatile int m_PixelCompleteCount;
+	int          m_TotalPixelCount;
+
 	EShading m_Shading;
 
 	int m_GIBounces;
@@ -59,12 +60,12 @@ public:
 	};
 	std::vector<Material> m_Materials;
 
-	int m_ImageCountLoaded;
-	int m_ImageSizeLoaded;
-
 private:
 	void LoadImage( std::wstring path, std::string file, NanoCore::Image & img );
 	void RaytracePreviewPixel( int x, int y, int * pixel );
+
+	int m_ImageCountLoaded;
+	int m_ImageSizeLoaded;
 };
 
 #endif

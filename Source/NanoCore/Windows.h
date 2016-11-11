@@ -19,7 +19,7 @@ public:
 	void Redraw();
 	void Exit();
 
-	virtual void OnKey( int key ) {}
+	virtual void OnKey( int key, bool bDown ) {}
 	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel ) {}
 	virtual void OnSize( int w, int h ) {}
 	virtual void OnDraw() {}

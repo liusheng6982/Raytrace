@@ -162,10 +162,11 @@ public:
 		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_Raytracer.m_SunDiskAngle ));
 
 		m_UpdateMs = 20;
+		m_bCtrlKey = false;
 	}
 	~MainWnd() {
 	}
-	virtual void OnKey( int key ) {
+	virtual void OnKey( int key, bool bDown ) {
 		switch( key ) {
 			case 32:
 				if( m_State == STATE_PREVIEW ) {
@@ -182,6 +183,9 @@ public:
 					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
 				}
 				break;
+			case 17:
+				m_bCtrlKey = bDown;
+				break;
 		}
 	}
 	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel )
@@ -190,7 +194,7 @@ public:
 			return;
 
 		if( wheel ) {
-			float step = len( m_KDTree.GetBBox().GetSize() ) / 20.0f;
+			float step = len( m_KDTree.GetBBox().GetSize() ) / (m_bCtrlKey ? 60.0f : 30.0f);
 			m_Camera.pos += (wheel>0 ? m_Camera.at : -m_Camera.at) * step;
 			m_bInvalidate = true;
 		}
@@ -366,9 +370,9 @@ public:
 
 		NanoCore::DebugOutput( "Triangle picker:\n" );
 		if( ri.tri ) {
-			NanoCore::DebugOutput( "  triangleID: %d\n\n", ri.tri->triangleID );
+			NanoCore::DebugOutput( "  triangleID: %d\n", ri.tri->triangleID );
 			m_Raytracer.m_SelectedTriangle = ri.tri->triangleID;
-			NanoCore::DebugOutput( "  material: %s (%d)\n", m_Raytracer.m_Materials[ri.tri->mtl].name.c_str(), ri.tri->mtl );
+			NanoCore::DebugOutput( "  material: %s (%d)\n\n", m_Raytracer.m_Materials[ri.tri->mtl].name.c_str(), ri.tri->mtl );
 		} else {
 			m_Raytracer.m_SelectedTriangle = -1;
 		}
@@ -479,6 +483,7 @@ public:
 	int             m_PreviewResolution;
 	std::auto_ptr<OptionsWnd> m_OptionsWnd;
 	int             m_UpdateMs;
+	bool            m_bCtrlKey;
 };
 
 int Main()

@@ -29,7 +29,7 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 	switch( message ) {
 		case WM_KEYDOWN:
-			s_pWindowMain->OnKey( (int)wParam );
+			s_pWindowMain->OnKey( (int)wParam, message == WM_KEYDOWN );
 			break;
 
 		case WM_MOUSEMOVE:
