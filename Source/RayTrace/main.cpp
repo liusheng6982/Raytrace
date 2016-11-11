@@ -8,7 +8,7 @@
 #include "RayTracer.h"
 #include <memory>
 
-
+#pragma optimize( "", off )
 
 class LoadingThread : public NanoCore::Thread
 {
@@ -152,14 +152,14 @@ public:
 	MainWnd() {
 		m_bInvalidate = false;
 		m_State = STATE_PREVIEW;
-		m_Raytracer.m_Shading = Raytracer::eShading_ColoredCube;
 		m_PreviewResolution = 200;
 
 		m_OptionItems.push_back( OptionItem( "Preview resolution", m_PreviewResolution ));
 		m_OptionItems.push_back( OptionItem( "Raytrace threads", m_Raytracer.m_NumThreads ));
-		m_OptionItems.push_back( OptionItem( "GI bounces", m_Raytracer.m_GIBounces ));
-		m_OptionItems.push_back( OptionItem( "Sun samples", m_Raytracer.m_SunSamples ));
-		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_Raytracer.m_SunDiskAngle ));
+		m_OptionItems.push_back( OptionItem( "GI bounces", m_PreviewRenderingContext.GIBounces ));
+		m_OptionItems.push_back( OptionItem( "GI samples", m_PreviewRenderingContext.GISamples ));
+		m_OptionItems.push_back( OptionItem( "Sun samples", m_PreviewRenderingContext.SunSamples ));
+		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_PreviewRenderingContext.SunDiskAngle ));
 
 		m_UpdateMs = 20;
 		m_bCtrlKey = false;
@@ -169,18 +169,19 @@ public:
 	virtual void OnKey( int key, bool bDown ) {
 		switch( key ) {
 			case 32:
-				if( m_State == STATE_PREVIEW ) {
+				if( m_State == STATE_PREVIEW && bDown ) {
 					m_State = STATE_RENDERING;
 					m_Image.Init( GetWidth(), GetHeight(), 24 );
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
 				}
 				break;
 			case 13:
-				if( m_State == STATE_PREVIEW ) {
+				if( m_State == STATE_PREVIEW && bDown ) {
 					m_State = STATE_RENDERING;
 					m_Image.Init( GetWidth(), GetHeight(), 24 );
-					m_Raytracer.m_Shading = Raytracer::eShading_Photo;
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+					Raytracer::Context context = m_PreviewRenderingContext;
+					context.Shading = Raytracer::eShading_Photo;
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, context );
 				}
 				break;
 			case 17:
@@ -255,7 +256,7 @@ public:
 					if( m_Image.GetWidth() != m_PreviewResolution ) {
 						m_Image.Init( m_PreviewResolution, m_PreviewResolution * GetHeight() / GetWidth(), 24 );
 					}
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
 					m_bInvalidate = false;
 				}
 				Redraw();
@@ -270,7 +271,7 @@ public:
 				} else {
 					if( m_bInvalidate ) {
 						m_bInvalidate = false;
-						m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
 					} else {
 						m_State = STATE_PREVIEW;
 						m_UpdateMs = 20;
@@ -333,23 +334,23 @@ public:
 				break;
 			}
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
-				m_Raytracer.m_Shading = Raytracer::eShading_ColoredCube;
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_ColoredCube;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED:
-				m_Raytracer.m_Shading = Raytracer::eShading_ColoredCubeShadowed;
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_ColoredCubeShadowed;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_TRIANGLEID:
-				m_Raytracer.m_Shading = Raytracer::eShading_TriangleID;
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_TriangleID;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_CHECKER:
-				m_Raytracer.m_Shading = Raytracer::eShading_Checker;
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_Checker;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_DIFFUSE:
-				m_Raytracer.m_Shading = Raytracer::eShading_Diffuse;
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_Diffuse;
 				m_bInvalidate = true;
 				break;
 			default:
@@ -484,7 +485,9 @@ public:
 	std::auto_ptr<OptionsWnd> m_OptionsWnd;
 	int             m_UpdateMs;
 	bool            m_bCtrlKey;
+	Raytracer::Context m_PreviewRenderingContext;
 };
+
 
 int Main()
 {

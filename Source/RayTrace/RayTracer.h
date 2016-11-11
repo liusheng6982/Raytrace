@@ -31,8 +31,17 @@ public:
 	Raytracer();
 	~Raytracer();
 
+	struct Context {
+		EShading Shading;
+		int	  GIBounces, GISamples;
+		int   SunSamples;
+		float SunDiskAngle;
+
+		Context() : Shading(eShading_ColoredCube), GIBounces(1), GISamples(10), SunSamples(10), SunDiskAngle( 0.52f ) {}
+	};
+
 	void LoadMaterials( IObjectFileLoader & loader );
-	void Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree );
+	void Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree, const Context & context );
 	bool IsRendering();
 	void Stop();
 
@@ -43,11 +52,6 @@ public:
 	volatile int m_PixelCompleteCount;
 	int          m_TotalPixelCount;
 
-	EShading m_Shading;
-
-	int m_GIBounces;
-	int m_SunSamples;
-	float m_SunDiskAngle;
 	int m_NumThreads;
 
 	int m_SelectedTriangle, m_DebugX, m_DebugY;
@@ -71,6 +75,7 @@ private:
 
 	int m_ImageCountLoaded;
 	int m_ImageSizeLoaded;
+	Context m_Context;
 };
 
 #endif

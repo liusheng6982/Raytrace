@@ -256,19 +256,19 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 		float shade = 255.0f;
 		RayInfo rSun;
 
-		switch( m_Shading ) {
+		switch( m_Context.Shading ) {
 			case eShading_ColoredCubeShadowed:
-				if( m_SunSamples ) {
+				if( m_Context.SunSamples ) {
 					int intersect = 0;
 
-					float len = ncTan( m_SunDiskAngle * 0.5f * 3.1415f / 180.0f );
+					float len = ncTan( DEG2RAD(m_Context.SunDiskAngle) * 0.5f );
 
-					for( int i=0; i<m_SunSamples; ++i )
+					for( int i=0; i<m_Context.SunSamples; ++i )
 					{
 						rSun.pos = ri.GetHit() + ri.n*0.01f;
 						rSun.dir = normalize( float3(1,8,1));
 
-						if( m_SunSamples > 1 ) {
+						if( m_Context.SunSamples > 1 ) {
 							rSun.dir += randUnitSphere()*len;
 							rSun.dir = normalize( rSun.dir );
 						}
@@ -278,7 +278,7 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 						m_pKDTree->Intersect( rSun );
 						if( rSun.tri ) intersect++;
 					}
-					float shadow = float(intersect) / m_SunSamples;
+					float shadow = float(intersect) / m_Context.SunSamples;
 					shade = 255 - shadow*200.0f;
 				}
 			case eShading_ColoredCube:
@@ -333,7 +333,7 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 		NanoCore::DebugOutput( "%d", 1 );
 	}
 
-	if( m_Shading < eShading_Previews ) {
+	if( m_Context.Shading < eShading_Previews ) {
 		RaytracePreviewPixel( x, y, pixel );
 		return;
 	}
@@ -414,10 +414,6 @@ Raytracer::Raytracer()
 {
 	NanoCore::JobManager::Init( 0, 2 );
 	m_ScreenTileSizePow2 = 6;
-	m_Shading = eShading_ColoredCube;
-	m_SunSamples = 1;
-	m_SunDiskAngle = 0.52f;
-	m_GIBounces = 3;
 	m_NumThreads = 3;
 	m_SelectedTriangle = -1;
 
@@ -434,7 +430,7 @@ void Raytracer::Stop()
 	NanoCore::JobManager::Wait( NanoCore::JobManager::efClearPendingJobs | NanoCore::JobManager::efDisableJobAddition );
 }
 
-void Raytracer::Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree )
+void Raytracer::Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree, const Context & context )
 {
 	if( kdTree.Empty())
 		return;
@@ -449,6 +445,7 @@ void Raytracer::Render( Camera & camera, NanoCore::Image & image, KDTree & kdTre
 	m_pKDTree = &kdTree;
 	m_pImage = &image;
 	m_pCamera = &camera;
+	m_Context = context;
 
 	int tileSize = 1 << m_ScreenTileSizePow2;
 

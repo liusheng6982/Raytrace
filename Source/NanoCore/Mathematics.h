@@ -3,6 +3,10 @@
 
 #include "Common.h"
 
+#define M_PI 3.14159265359f
+#define DEG2RAD(x) ((x)*M_PI/180.0f)
+#define RAD2DEG(x) ((x)*180.0f/M_PI)
+
 
 
 float ncSqrt( float x );
