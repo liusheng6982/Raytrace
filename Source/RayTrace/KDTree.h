@@ -26,9 +26,9 @@ struct Triangle
 	int    triangleID;
 
 	float2 GetUV( float2 barycentric_pos ) const {
-		float2 uv10 = uv[1] - uv[0];
-		float2 uv20 = uv[2] - uv[0];
-		return uv10 * barycentric_pos.x + uv20 * barycentric_pos.y + uv[0];
+		float2 uv10 = uv[0] - uv[1];
+		float2 uv20 = uv[0] - uv[2];
+		return uv10 * barycentric_pos.x + uv20 * barycentric_pos.y - uv[0];
 	}
 };
 

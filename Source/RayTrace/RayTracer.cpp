@@ -5,7 +5,7 @@
 #include <NanoCore/File.h>
 #include <NanoCore/String.h>
 
-#pragma optimize( "", off )
+
 
 //#define JobsLog NanoCore::DebugOutput
 #define JobsLog
