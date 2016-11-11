@@ -52,6 +52,7 @@ public:
 	KDTree * m_pKDTree;
 
 	struct Material {
+		std::string name;
 		NanoCore::Image mapDiffuse, mapSpecular, mapBump, mapAlpha;
 		float Tr;
 		float3 Kd, Ks, Ke;

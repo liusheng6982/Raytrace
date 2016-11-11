@@ -22,7 +22,8 @@ public:
 
 	int GetWidth() const { return m_width; }
 	int GetHeight() const { return m_height; }
-	int GetBitsPerPixel() const { return m_bpp; }
+	int GetBpp() const { return m_bpp; }
+	int GetSize() const { return m_width*m_height*(m_bpp/8); }
 
 	const uint8 * GetImageAt( int x, int y ) const;
 	uint8 * GetImageAt( int x, int y );

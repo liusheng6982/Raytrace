@@ -232,13 +232,18 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 
 	for( ;; ) {
 		m_pKDTree->Intersect( ri );
-		if( ri.tri && m_Materials[ri.tri->mtl].mapAlpha.GetWidth() && m_Shading == eShading_Diffuse ) {
+		if( !ri.tri )
+			break;
+
+		const NanoCore::Image & img = m_Materials[ri.tri->mtl].mapAlpha;
+		if( img.GetWidth() ) {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
 
-			int alpha[3];
-			m_Materials[ri.tri->mtl].mapAlpha.GetPixel( uv.x, uv.y, alpha );
+			int pix[4];
+			img.GetPixel( uv.x, uv.y, pix );
+			int alpha = (img.GetBpp() == 32) ? pix[3] : pix[0];
 
-			if( !alpha[0] ) {
+			if( !alpha ) {
 				ri.pos = ri.hit + ri.dir;
 				ri.hitlen = 10000000.0f;
 			} else
@@ -486,7 +491,7 @@ void Raytracer::LoadImage( std::wstring path, std::string file, NanoCore::Image 
 	img.Load( path.c_str());
 	
 	m_ImageCountLoaded++;
-	m_ImageSizeLoaded += img.GetWidth() * img.GetHeight() * 3;
+	m_ImageSizeLoaded += img.GetSize();
 }
 
 void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
@@ -500,6 +505,7 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 	for( int i=0; i<num; ++i ) {
 		auto src = loader.GetMaterial(i);
 		auto & dst = m_Materials[i];
+		dst.name = src->name;
 		dst.Kd = src->Kd;
 		dst.Ks = src->Ks;
 		dst.Ke = src->Ke;

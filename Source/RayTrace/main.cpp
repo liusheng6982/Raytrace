@@ -368,6 +368,7 @@ public:
 		if( ri.tri ) {
 			NanoCore::DebugOutput( "  triangleID: %d\n\n", ri.tri->triangleID );
 			m_Raytracer.m_SelectedTriangle = ri.tri->triangleID;
+			NanoCore::DebugOutput( "  material: %s (%d)\n", m_Raytracer.m_Materials[ri.tri->mtl].name.c_str(), ri.tri->mtl );
 		} else {
 			m_Raytracer.m_SelectedTriangle = -1;
 		}

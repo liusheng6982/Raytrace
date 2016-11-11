@@ -110,6 +110,7 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 			}
 			m_MaterialToIndex[ s ] = (int)m_Materials.size();
 			m_Materials.push_back(Material());
+			m_Materials.back().name = s;
 		} else if( !strcmp( words[0].c_str(), "map_kd" ))
 			mtl->mapKd = words[ words.size()-1 ].c_str();
 		else if( !strcmp( words[0].c_str(), "map_ks" ))

@@ -19,7 +19,7 @@ Image::Image( int w, int h, int bpp ) {
 Image::Image( const Image & img ) : m_width(0), m_height(0), m_bpp(0), m_pBuffer(NULL) {
 	Init( img.m_width, img.m_height, img.m_bpp );
 	if( m_pBuffer )
-		memcpy( m_pBuffer, img.m_pBuffer, GetWidth()*GetHeight()*GetBitsPerPixel()/8 );
+		memcpy( m_pBuffer, img.m_pBuffer, GetWidth()*GetHeight()*(GetBpp()/8) );
 }
 
 void Image::Init( int w, int h, int bpp ) {
@@ -37,13 +37,10 @@ void Image::Init( int w, int h, int bpp ) {
 
 void Image::Fill( uint32 color ) {
 	if( m_pBuffer )
-		memset( m_pBuffer, 0, m_width*m_height*m_bpp/8 );
+		memset( m_pBuffer, 0, m_width*m_height*(m_bpp/8) );
 }
 
 int Image::WriteAsBMP( const wchar_t * name ) {
-	if( m_bpp != 24 )
-		return 0;
-
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
 	if( !fp )
 		return 0;
@@ -51,19 +48,21 @@ int Image::WriteAsBMP( const wchar_t * name ) {
 	char sig[2] = {'B','M'};
 	fp->Write( sig, 2 );
 
-	int pw = m_width*3;
+	int pw = m_width * (m_bpp/8);
 	if( pw % 4 ) pw += 4 - pw%4;
 
 	int hdr[] = { 14 + 40 + pw*m_height, 0, 14+40 };
 	fp->Write( hdr, sizeof(hdr) );
 
-	BITMAPINFOHEADER bmpih = { 40, m_width, m_height, 1, 24, 0, pw*m_height, 0, 0, 0, 0 };
+	BITMAPINFOHEADER bmpih = { 40, m_width, m_height, 1, GetBpp(), 0, pw*m_height, 0, 0, 0, 0 };
 	fp->Write( &bmpih, 40 );
 
-	uint32 pad=0;
+	uint32 pad = 0;
+	uint32 rowSize = GetWidth() * (GetBpp()/8);
+
 	for( int i=0; i<m_height; ++i ) {
-		fp->Write( m_pBuffer + i*m_width*3, m_width*3 );
-		fp->Write( &pad, pw - m_width*3 );
+		fp->Write( m_pBuffer + i*rowSize, rowSize );
+		fp->Write( &pad, pw - rowSize );
 	}
 	return 1;
 }
