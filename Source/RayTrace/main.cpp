@@ -152,7 +152,7 @@ public:
 	MainWnd() {
 		m_bInvalidate = false;
 		m_State = STATE_PREVIEW;
-		m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
+		m_Raytracer.m_Shading = Raytracer::eShading_ColoredCube;
 		m_PreviewResolution = 200;
 
 		m_OptionItems.push_back( OptionItem( "Preview resolution", m_PreviewResolution ));
@@ -171,6 +171,14 @@ public:
 				if( m_State == STATE_PREVIEW ) {
 					m_State = STATE_RENDERING;
 					m_Image.Init( GetWidth(), GetHeight(), 24 );
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
+				}
+				break;
+			case 13:
+				if( m_State == STATE_PREVIEW ) {
+					m_State = STATE_RENDERING;
+					m_Image.Init( GetWidth(), GetHeight(), 24 );
+					m_Raytracer.m_Shading = Raytracer::eShading_Photo;
 					m_Raytracer.Render( m_Camera, m_Image, m_KDTree );
 				}
 				break;
@@ -321,23 +329,23 @@ public:
 				break;
 			}
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
-				m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCube;
+				m_Raytracer.m_Shading = Raytracer::eShading_ColoredCube;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED:
-				m_Raytracer.m_Shading = Raytracer::ePreviewShading_ColoredCubeShadowed;
+				m_Raytracer.m_Shading = Raytracer::eShading_ColoredCubeShadowed;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_TRIANGLEID:
-				m_Raytracer.m_Shading = Raytracer::ePreviewShading_TriangleID;
+				m_Raytracer.m_Shading = Raytracer::eShading_TriangleID;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_CHECKER:
-				m_Raytracer.m_Shading = Raytracer::ePreviewShading_Checker;
+				m_Raytracer.m_Shading = Raytracer::eShading_Checker;
 				m_bInvalidate = true;
 				break;
 			case IDC_VIEW_PREVIEWMODE_DIFFUSE:
-				m_Raytracer.m_Shading = Raytracer::ePreviewShading_Diffuse;
+				m_Raytracer.m_Shading = Raytracer::eShading_Diffuse;
 				m_bInvalidate = true;
 				break;
 			default:

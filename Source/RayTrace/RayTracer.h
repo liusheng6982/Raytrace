@@ -15,11 +15,13 @@ public:
 	int m_ScreenTileSizePow2;
 
 	enum EShading {
-		ePreviewShading_ColoredCube,
-		ePreviewShading_ColoredCubeShadowed,
-		ePreviewShading_TriangleID,
-		ePreviewShading_Checker,
-		ePreviewShading_Diffuse
+		eShading_ColoredCube,
+		eShading_ColoredCubeShadowed,
+		eShading_TriangleID,
+		eShading_Checker,
+		eShading_Diffuse,
+		eShading_Previews,
+		eShading_Photo,
 	};
 
 	Raytracer();
@@ -59,7 +61,9 @@ public:
 	int m_ImageCountLoaded;
 	int m_ImageSizeLoaded;
 
-	void LoadAsBmp( std::wstring path, std::string file, NanoCore::Image & img );
+private:
+	void LoadImage( std::wstring path, std::string file, NanoCore::Image & img );
+	void RaytracePreviewPixel( int x, int y, int * pixel );
 };
 
 #endif

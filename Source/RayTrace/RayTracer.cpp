@@ -226,18 +226,13 @@ static void ComputeProgressiveDistribution( int size, std::vector<int> & order )
 	}
 }
 
-void Raytracer::RaytracePixel( int x, int y, int * pixel )
-{
-	if( x == m_DebugX && y == m_DebugY ) {
-		NanoCore::DebugOutput( "%d", 1 );
-	}
-
+void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 	RayInfo ri;
 	ri.Init( x, y, *m_pCamera, m_pImage->GetWidth(), m_pImage->GetHeight() );
 
 	for( ;; ) {
 		m_pKDTree->Intersect( ri );
-		if( ri.tri && m_Materials[ri.tri->mtl].mapAlpha.GetWidth() && m_Shading == ePreviewShading_Diffuse ) {
+		if( ri.tri && m_Materials[ri.tri->mtl].mapAlpha.GetWidth() && m_Shading == eShading_Diffuse ) {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
 
 			int alpha[3];
@@ -257,7 +252,7 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 		RayInfo rSun;
 
 		switch( m_Shading ) {
-			case ePreviewShading_ColoredCubeShadowed:
+			case eShading_ColoredCubeShadowed:
 				if( m_SunSamples ) {
 					int intersect = 0;
 
@@ -281,56 +276,64 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 					float shadow = float(intersect) / m_SunSamples;
 					shade = 255 - shadow*200.0f;
 				}
-			case ePreviewShading_ColoredCube:
+			case eShading_ColoredCube:
 				pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
 				pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
 				pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
 				break;
-			case ePreviewShading_TriangleID: {
-				uint32 c = ri.tri->triangleID ^ (ri.tri->triangleID << 18) ^ (ri.tri->triangleID << 5);
-				pixel[0] = c&0xFF;
-				pixel[1] = (c>>8)&0xFF;
-				pixel[2] = (c>>16)&0xFF;
-				if( ri.tri->triangleID == m_SelectedTriangle )
-					pixel[0] = pixel[1] = pixel[2] = 0xFF;
-				break;
-			}
-			case ePreviewShading_Checker: {
-				float3 hit = ri.GetHit();
-				float shade = dot( ri.n, normalize( float3(1,8,1)));
-				if( shade < 0.0f ) shade = 0.0f;
-				shade = shade*0.5f + 0.5f;
-				int c = int(hit.x) + int(hit.y) + int(hit.z);
-				pixel[0] = pixel[1] = pixel[2] = int( ((c&1) ? 255 : 50)*shade );
-				break;
-			}
-			case ePreviewShading_Diffuse: {
-				float2 uv = ri.tri->GetUV( ri.barycentric );
-				if( ri.tri->mtl>=0 ) {
-					const Material & mtl = m_Materials[ri.tri->mtl];
-					const NanoCore::Image & img = mtl.mapDiffuse;
-					if( img.GetWidth()) {
-						img.GetPixel( uv.x, uv.y, pixel );
-					} else {
-						pixel[0] = int(mtl.Kd.x * 255.0f);
-						pixel[1] = int(mtl.Kd.y * 255.0f);
-						pixel[2] = int(mtl.Kd.z * 255.0f);
-					}
-
-					//pixel[0] = int(ri.bari_u*255.0f);
-					//pixel[1] = int(ri.bari_v*255.0f);
-					//pixel[2] = 0;
-
-
+		case eShading_TriangleID: {
+			uint32 c = ri.tri->triangleID ^ (ri.tri->triangleID << 18) ^ (ri.tri->triangleID << 5);
+			pixel[0] = c&0xFF;
+			pixel[1] = (c>>8)&0xFF;
+			pixel[2] = (c>>16)&0xFF;
+			if( ri.tri->triangleID == m_SelectedTriangle )
+				pixel[0] = pixel[1] = pixel[2] = 0xFF;
+			break;
+		}
+		case eShading_Checker: {
+			float3 hit = ri.GetHit();
+			float shade = dot( ri.n, normalize( float3(1,8,1)));
+			if( shade < 0.0f ) shade = 0.0f;
+			shade = shade*0.5f + 0.5f;
+			int c = int(hit.x) + int(hit.y) + int(hit.z);
+			pixel[0] = pixel[1] = pixel[2] = int( ((c&1) ? 255 : 50)*shade );
+			break;
+		}
+		case eShading_Diffuse: {
+			float2 uv = ri.tri->GetUV( ri.barycentric );
+			if( ri.tri->mtl>=0 ) {
+				const Material & mtl = m_Materials[ri.tri->mtl];
+				const NanoCore::Image & img = mtl.mapDiffuse;
+				if( img.GetWidth()) {
+					img.GetPixel( uv.x, uv.y, pixel );
 				} else {
-					pixel[0] = pixel[1] = pixel[2] = 0;
+					pixel[0] = int(mtl.Kd.x * 255.0f);
+					pixel[1] = int(mtl.Kd.y * 255.0f);
+					pixel[2] = int(mtl.Kd.z * 255.0f);
 				}
-				break;
+			} else {
+				pixel[0] = pixel[1] = pixel[2] = 0;
 			}
+			break;
+		}
 		}
 	} else {
 		pixel[0] = pixel[1] = pixel[2] = 0;
 	}
+}
+
+void Raytracer::RaytracePixel( int x, int y, int * pixel )
+{
+	if( x == m_DebugX && y == m_DebugY ) {
+		NanoCore::DebugOutput( "%d", 1 );
+	}
+
+	if( m_Shading < eShading_Previews ) {
+		RaytracePreviewPixel( x, y, pixel );
+		return;
+	}
+
+
 }
 
 static std::vector<int> progressive_order;
@@ -406,7 +409,7 @@ Raytracer::Raytracer()
 {
 	NanoCore::JobManager::Init( 0, 2 );
 	m_ScreenTileSizePow2 = 6;
-	m_Shading = ePreviewShading_ColoredCube;
+	m_Shading = eShading_ColoredCube;
 	m_SunSamples = 1;
 	m_SunDiskAngle = 0.52f;
 	m_GIBounces = 3;
@@ -474,16 +477,14 @@ void Raytracer::GetStatus( std::wstring & status ) {
 	}
 }
 
-void Raytracer::LoadAsBmp( std::wstring path, std::string file, NanoCore::Image & img ) {
+void Raytracer::LoadImage( std::wstring path, std::string file, NanoCore::Image & img ) {
 	if( file.empty()) {
 		img.Clear();
 		return;
 	}
-	std::wstring wfile( file.begin(), file.end());
-	path += wfile; 
-	NanoCore::StrReplaceExtension( path, L"bmp" );
+	path += NanoCore::StrMbsToWcs( file.c_str() );
 	img.Load( path.c_str());
-	 
+	
 	m_ImageCountLoaded++;
 	m_ImageSizeLoaded += img.GetWidth() * img.GetHeight() * 3;
 }
@@ -504,16 +505,11 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 		dst.Ke = src->Ke;
 		dst.Tr = src->Transparency;
 
-		if( !src->mapKd.empty())
-			dst.mapDiffuse.Load( (path + NanoCore::StrMbsToWcs( src->mapKd.c_str())).c_str() );
-		if( !src->mapKs.empty())
-			dst.mapSpecular.Load( (path + NanoCore::StrMbsToWcs( src->mapKs.c_str())).c_str() );
-		if( !src->mapBump.empty())
-			dst.mapBump.Load( (path + NanoCore::StrMbsToWcs( src->mapBump.c_str())).c_str() );
-		if( !src->mapAlpha.empty())
-			dst.mapAlpha.Load( (path + NanoCore::StrMbsToWcs( src->mapAlpha.c_str())).c_str() );
-
-		//LoadAsBmp( path, src->mapKs, dst.mapSpecular );
+		LoadImage( path, src->mapKd, dst.mapDiffuse );
+		LoadImage( path, src->mapKs, dst.mapSpecular );
+		LoadImage( path, src->mapBump, dst.mapBump );
+		LoadImage( path, src->mapAlpha, dst.mapAlpha );
 	}
+	NanoCore::DebugOutput( "%d materials loaded\n", num );
 	NanoCore::DebugOutput( "%d images loaded (%d Mb)\n", m_ImageCountLoaded, m_ImageSizeLoaded / (1024*1024) );
 }
