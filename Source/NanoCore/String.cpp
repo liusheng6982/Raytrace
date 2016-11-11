@@ -91,10 +91,21 @@ void StrSplit( const char * str, const char * separators, std::vector<std::strin
 		while( sep[str[i]] ) ++i;
 		for( j=i; str[j] && !sep[str[j]]; ++j );
 
-		std::string s( str+i, j-i );
-		result.push_back( s );
+		if( j-i > 0 ) {
+			std::string s( str+i, j-i );
+			result.push_back( s );
+		}
 		i = j;
 	}
+}
+
+void StrTrim( std::string & str ) {
+	while( !str.empty() && str[0] == ' ' ) str.erase( str.begin());
+	while( !str.empty() && str.back() == ' ' ) str.resize( str.size()-1 );
+}
+
+void StrLwr( std::string & s ) {
+	strlwr( &s[0] );
 }
 
 }

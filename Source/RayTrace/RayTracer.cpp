@@ -237,7 +237,7 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 
 	for( ;; ) {
 		m_pKDTree->Intersect( ri );
-		if( ri.tri && m_Materials[ri.tri->mtl].mapAlpha.GetWidth()) {
+		if( ri.tri && m_Materials[ri.tri->mtl].mapAlpha.GetWidth() && m_Shading == ePreviewShading_Diffuse ) {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
 
 			int alpha[3];
@@ -356,6 +356,7 @@ public:
 		if( x < pRaytracer->m_pImage->GetWidth() && y < pRaytracer->m_pImage->GetHeight()) {
 			int rgb[3];
 			pRaytracer->RaytracePixel( x, y, rgb );
+			int t = rgb[0]; rgb[0] = rgb[2]; rgb[2] = t;
 			pRaytracer->m_pImage->SetPixel( x, y, rgb );
 			pRaytracer->m_PixelCompleteCount++;
 		}

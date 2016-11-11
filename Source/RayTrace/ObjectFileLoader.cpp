@@ -102,7 +102,13 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 #define READ_VEC3(v) v.x = (float)atof(words[1].c_str()), v.y = (float)atof(words[2].c_str()), v.z = (float)atof(words[3].c_str())
 
 		if( !strcmp( words[0].c_str(), "newmtl" )) {
-			m_MaterialToIndex[ words[1] ] = (int)m_Materials.size();
+			std::string s( buf+7 );
+			NanoCore::StrTrim( s );
+			NanoCore::StrLwr( s );
+			if( m_MaterialToIndex.find( s ) != m_MaterialToIndex.end()) {
+				NanoCore::DebugOutput( "Warning: duplicate material found: %s\n", s.c_str());
+			}
+			m_MaterialToIndex[ s ] = (int)m_Materials.size();
 			m_Materials.push_back(Material());
 		} else if( !strcmp( words[0].c_str(), "map_kd" ))
 			mtl->mapKd = words[ words.size()-1 ].c_str();
@@ -115,11 +121,11 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 		else if( !strcmp( words[0].c_str(), "bump" ))
 			mtl->mapBump = words[ words.size()-1 ].c_str();
 		else if( words[0] == "kd" )
-			READ_VEC3(mtl->Kd);
+		{READ_VEC3(mtl->Kd);}
 		else if( words[0] == "ks" )
-			READ_VEC3(mtl->Ks);
+		{READ_VEC3(mtl->Ks);}
 		else if( words[0] == "ke" )
-			READ_VEC3(mtl->Ke);
+		{READ_VEC3(mtl->Ke);}
 		else if( words[0] == "tr" )
 			mtl->Transparency = (float)atof( words[1].c_str() );
 		else if( words[0] == "ns" )
@@ -198,7 +204,10 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 				break;
 			case 'u':
 				if( !strncmp( line, "usemtl ", 7 )) {
-					materialID = m_MaterialToIndex[line+7];
+					std::string s( line+7 );
+					NanoCore::StrTrim( s );
+					NanoCore::StrLwr( s );
+					materialID = m_MaterialToIndex[s.c_str()];
 				}
 				break;
 			case 'v':
