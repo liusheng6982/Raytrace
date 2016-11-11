@@ -8,7 +8,7 @@
 #include "RayTracer.h"
 #include <memory>
 
-#pragma optimize( "", off )
+
 
 class LoadingThread : public NanoCore::Thread
 {
@@ -160,6 +160,10 @@ public:
 		m_OptionItems.push_back( OptionItem( "GI samples", m_PreviewRenderingContext.GISamples ));
 		m_OptionItems.push_back( OptionItem( "Sun samples", m_PreviewRenderingContext.SunSamples ));
 		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_PreviewRenderingContext.SunDiskAngle ));
+		m_OptionItems.push_back( OptionItem( "Sun angle 1", m_PreviewRenderingContext.SunAngle1 ));
+		m_OptionItems.push_back( OptionItem( "Sun angle 2", m_PreviewRenderingContext.SunAngle2 ));
+		m_OptionItems.push_back( OptionItem( "Sun strength", m_PreviewRenderingContext.SunStrength ));
+		m_OptionItems.push_back( OptionItem( "Sky strength", m_PreviewRenderingContext.SkyStrength ));
 
 		m_UpdateMs = 20;
 		m_bCtrlKey = false;
@@ -182,6 +186,15 @@ public:
 					Raytracer::Context context = m_PreviewRenderingContext;
 					context.Shading = Raytracer::eShading_Photo;
 					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, context );
+				}
+				break;
+			case 27:
+				if( m_State == STATE_RENDERING ) {
+					m_Raytracer.Stop();
+					m_State = STATE_PREVIEW;
+					m_bInvalidate = true;
+					m_UpdateMs = 20;
+					SetStatus( NULL );
 				}
 				break;
 			case 17:
@@ -215,7 +228,7 @@ public:
 		}
 		if( bDrag ) {
 			m_Camera = dragCam;
-			m_Camera.Rotate( (dragY - y) * 3.1415f / 200.0f, (x - dragX) * 3.1415f / 200.0f );
+			m_Camera.Rotate( (y - dragY) * 3.1415f / 200.0f, (x - dragX) * 3.1415f / 200.0f );
 			m_bInvalidate = true;
 		}
 		if( btn_down & 2 ) {
@@ -464,7 +477,7 @@ public:
 		float L = len( box.min - center );
 
 		m_Camera.fovy = 60.0f * 3.1415f / 180.0f;
-		m_Camera.world_up = float3(0,-1,0);
+		m_Camera.world_up = float3(0,1,0);
 		m_Camera.LookAt( center, float3(1,-1,-1)*L );
 		m_bInvalidate = true;
 	}

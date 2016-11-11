@@ -9,9 +9,9 @@
 }*/
 
 void Camera::Orthonormalize() {
-	at = normalize( at );
-	right = normalize( cross( up, at ));
-	up = normalize( cross( right, at ));
+	at = normalize( at ); // z
+	right = normalize( cross( up, at ));  // x
+	up = normalize( cross( at, right ));  // y
 }
 
 void Camera::LookAt( float3 lookat_pos, float3 at_vec ) {

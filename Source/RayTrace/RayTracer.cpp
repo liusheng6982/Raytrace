@@ -266,7 +266,7 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 					for( int i=0; i<m_Context.SunSamples; ++i )
 					{
 						rSun.pos = ri.GetHit() + ri.n*0.01f;
-						rSun.dir = normalize( float3(1,8,1));
+						rSun.dir = m_SunDir;
 
 						if( m_Context.SunSamples > 1 ) {
 							rSun.dir += randUnitSphere()*len;
@@ -327,18 +327,107 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 	}
 }
 
+void Raytracer::TraceRay( RayInfo & ri ) {
+	for( ;; ) {
+		m_pKDTree->Intersect( ri );
+		if( !ri.tri || m_Materials.empty())
+			break;
+
+		const NanoCore::Image::Ptr & img = m_Materials[ri.tri->mtl].pAlphaMap;
+		if( img ) {
+			float2 uv = ri.tri->GetUV( ri.barycentric );
+
+			int pix[4];
+			img->GetPixel( uv.x, uv.y, pix );
+			int alpha = (img->GetBpp() == 32) ? pix[3] : pix[0];
+
+			if( !alpha ) {
+				ri.pos = ri.hit + ri.dir * 0.001f;
+				ri.hitlen = 10000000.0f;
+			} else
+				break;
+		} else
+			break;
+	}
+}
+
+static float3 GetTexel( const NanoCore::Image::Ptr & pImage, float2 uv ) {
+	if( !pImage )
+		return float3(1,1,1);
+	int pix[4];
+	pImage->GetPixel( uv.x, uv.y, pix );
+	return float3( pix[0]/255.0f, pix[1]/255.0f, pix[2]/255.0f );
+}
+
+static float3 BRDF( float3 V, float3 L, float3 N, float3 LightColor, const Raytracer::Material & M, float2 uv ) {
+	float3 Albedo = GetTexel( M.pDiffuseMap, uv ) * M.Kd;
+	return LightColor * Albedo * Max( dot( N, L ), 0.0f );
+}
+
+float3 Raytracer::RaytraceRay( RayInfo & ri, int bounces ) {
+	float3 Sky = m_Context.SkyColor * m_Context.SkyStrength;
+
+	TraceRay( ri );
+	if( !ri.tri )
+		return Sky;
+
+	float3 V = -ri.dir;
+
+	float sunDiskTan = tan( DEG2RAD(m_Context.SunDiskAngle) * 0.5f );
+
+	Material mtlWhite;
+	mtlWhite.Kd = float3(0.5,0.5,0.5);
+
+	float3 Sun = m_Context.SunColor * m_Context.SunStrength;
+	float3 Contrib(0,0,0);
+
+	float2 UV = ri.tri->GetUV( ri.barycentric );
+	const Material & M = m_Materials.empty() ? mtlWhite : m_Materials[ri.tri->mtl];
+	float3 hit = ri.hit + ri.n * 0.001f;
+
+	for( int i=0; i<m_Context.SunSamples; ++i ) {
+		RayInfo rs;
+		rs.pos = hit;
+		rs.dir = m_SunDir + randUnitSphere() * sunDiskTan;
+		TraceRay( rs );
+		if( !rs.tri )
+			Contrib += BRDF( V, m_SunDir, ri.n, Sun, M, UV );
+	}
+	for( int i=0; i<m_Context.GISamples; ++i ) {
+		RayInfo rs;
+		rs.pos = hit;
+		rs.dir = randUnitSphere();
+		if( dot( rs.dir, ri.n ) < 0.0f )
+			rs.dir = reflect( rs.dir, ri.n );
+		TraceRay( rs );
+		if( !rs.tri )
+			Contrib += BRDF( V, rs.dir, ri.n, Sky, M, UV );
+		else if( bounces ) {
+			// trace further here....
+		}
+	}
+	Contrib *= 1.0f / float( m_Context.SunSamples + m_Context.GISamples );
+	return Contrib;
+}
+
 void Raytracer::RaytracePixel( int x, int y, int * pixel )
 {
 	if( x == m_DebugX && y == m_DebugY ) {
 		NanoCore::DebugOutput( "%d", 1 );
 	}
-
 	if( m_Context.Shading < eShading_Previews ) {
 		RaytracePreviewPixel( x, y, pixel );
 		return;
 	}
 
+	RayInfo ri;
+	ri.Init( x, y, *m_pCamera, m_pImage->GetWidth(), m_pImage->GetHeight() );
 
+	float3 color = RaytraceRay( ri, m_Context.GIBounces );
+
+	pixel[0] = int( color.x * 255.0f );
+	pixel[1] = int( color.y * 255.0f );
+	pixel[2] = int( color.z * 255.0f );
 }
 
 static std::vector<int> progressive_order;
@@ -410,23 +499,19 @@ static SpawnProgressiveJobsJob SpawnProgJobsJob;
 
 
 
-Raytracer::Raytracer()
-{
+Raytracer::Raytracer() {
 	NanoCore::JobManager::Init( 0, 2 );
 	m_ScreenTileSizePow2 = 6;
 	m_NumThreads = 3;
 	m_SelectedTriangle = -1;
-
 	ComputeProgressiveDistribution( 1 << m_ScreenTileSizePow2, progressive_order );
 }
 
-Raytracer::~Raytracer()
-{
+Raytracer::~Raytracer() {
 	NanoCore::JobManager::Done();
 }
 
-void Raytracer::Stop()
-{
+void Raytracer::Stop() {
 	NanoCore::JobManager::Wait( NanoCore::JobManager::efClearPendingJobs | NanoCore::JobManager::efDisableJobAddition );
 }
 
@@ -446,6 +531,11 @@ void Raytracer::Render( Camera & camera, NanoCore::Image & image, KDTree & kdTre
 	m_pImage = &image;
 	m_pCamera = &camera;
 	m_Context = context;
+
+	matrix m1, m2;
+	m1.setRotationAxis( float3(1,0,0), DEG2RAD(context.SunAngle1) );
+	m2.setRotationAxis( float3(0,0,1), DEG2RAD(context.SunAngle2) );
+	m_SunDir = m2 * m1 * float3(0,0,-1);
 
 	int tileSize = 1 << m_ScreenTileSizePow2;
 

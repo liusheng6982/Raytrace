@@ -80,6 +80,9 @@ struct float3
 	friend float3 operator * ( float k, float3 a ) {
 		return a * k;
 	}
+	friend float3 operator * ( float3 a, float3 b ) {
+		return float3( a.x*b.x, a.y*b.y, a.z*b.z );
+	}
 	friend float3 operator / ( float3 a, float3 b ) {
 		return float3( a.x / b.x, a.y / b.y, a.z / b.z );
 	}

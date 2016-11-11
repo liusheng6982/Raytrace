@@ -337,6 +337,7 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 				DestroyWindow( hWnd );
 				UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
 				EnableWindow( g_hWnd, TRUE );
+				ShowWindow( g_hWnd, SW_SHOW );
 				s_wid.erase( s_wid.find( hWnd ));
 				return 0;
 			}
@@ -349,6 +350,7 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 				DestroyWindow( hWnd );
 				UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
 				EnableWindow( g_hWnd, TRUE );
+				ShowWindow( g_hWnd, SW_SHOW );
 				return 0;
 			}
 			break;
