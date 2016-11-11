@@ -515,6 +515,8 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 		LoadImage( path, src->mapKs, dst.mapSpecular );
 		LoadImage( path, src->mapBump, dst.mapBump );
 		LoadImage( path, src->mapAlpha, dst.mapAlpha );
+		if( !dst.mapAlpha.GetWidth() && dst.mapDiffuse.GetBpp() == 32 )
+			LoadImage( path, src->mapKd, dst.mapAlpha );
 	}
 	NanoCore::DebugOutput( "%d materials loaded\n", num );
 	NanoCore::DebugOutput( "%d images loaded (%d Mb)\n", m_ImageCountLoaded, m_ImageSizeLoaded / (1024*1024) );
