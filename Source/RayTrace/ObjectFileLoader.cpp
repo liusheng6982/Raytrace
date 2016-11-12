@@ -12,8 +12,7 @@ using namespace std;
 
 #pragma warning( disable : 4996 )
 
-class ObjectFileLoader : public IObjectFileLoader
-{
+class ObjectFileLoader : public IObjectFileLoader {
 public:
 	ObjectFileLoader() : m_Progress(0), m_TriangleCount(0), m_PositionCount(0), m_UVCount(0) {}
 	virtual ~ObjectFileLoader() {
@@ -37,6 +36,9 @@ public:
 	virtual const float2 * GetVertexUV( int i ) {
 		return (i >= 0 && i < m_UVCount) ? &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
+	virtual const float3 * GetVertexNormal( int i ) {
+		return (i >= 0 && i < m_NormalCount) ? &m_Normals[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+	}
 	virtual const Triangle * GetTriangle( int i ) {
 		return (i >= 0 && i < m_TriangleCount) ? &m_Triangles[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
@@ -52,6 +54,7 @@ public:
 
 	void Save( const wchar_t * pwFilename );
 	void LoadMaterialLibrary( const wchar_t * name );
+	void ShowStats( const wchar_t * name );
 
 	template< typename T > void AddElement( T & el, vector<T*> & container, int & count ) {
 		if( count % BUCKET_SIZE == 0 )
@@ -67,11 +70,12 @@ public:
 
 	vector<float3*>   m_Positions;
 	vector<float2*>   m_UVs;
+	vector<float3*>   m_Normals;
 	vector<Triangle*> m_Triangles;
 	vector<Material>  m_Materials;
 	map<string,int>   m_MaterialToIndex;
 
-	int m_PositionCount, m_UVCount, m_TriangleCount;
+	int m_PositionCount, m_UVCount, m_NormalCount, m_TriangleCount;
 	wstring m_wFilename;
 	string m_Mtllib;
 
@@ -134,13 +138,26 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 	}
 }
 
-bool ObjectFileLoader::Load( const wchar_t * pwFilename )
-{
+void ObjectFileLoader::ShowStats( const wchar_t * name ) {
+	NanoCore::DebugOutput( "OBJ file: %ls\n", name );
+	NanoCore::DebugOutput( "\t%d vertices\n", m_PositionCount );
+	NanoCore::DebugOutput( "\t%d UV coords\n", m_UVCount );
+	NanoCore::DebugOutput( "\t%d normals\n", m_NormalCount );
+	NanoCore::DebugOutput( "\t%d triangles\n", m_TriangleCount );
+}
+
+bool ObjectFileLoader::Load( const wchar_t * pwFilename ) {
 	m_Progress = 0;
 	m_wFilename = pwFilename;
 
 	wstring wFilenameCached( pwFilename );
 	wFilenameCached += L".cached";
+
+	EraseContainer( m_Positions );
+	EraseContainer( m_UVs );
+	EraseContainer( m_Normals );
+	EraseContainer( m_Triangles );
+	m_PositionCount = m_UVCount = m_NormalCount = m_TriangleCount = 0;
 
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFilenameCached.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
@@ -152,25 +169,26 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 
 		fp->Read( &m_PositionCount, sizeof(m_PositionCount) );
 		fp->Read( &m_UVCount, sizeof(m_UVCount) );
+		fp->Read( &m_NormalCount, sizeof(m_NormalCount) );
 		fp->Read( &m_TriangleCount, sizeof(m_TriangleCount) );
 
-		EraseContainer( m_Positions );
 		for( int count = m_PositionCount; count > 0; count -= BUCKET_SIZE ) {
 			m_Positions.push_back( new float3[BUCKET_SIZE] );
 			fp->Read( m_Positions.back(), Min( BUCKET_SIZE, count )*sizeof(float3) );
 		}
-		EraseContainer( m_UVs );
 		for( int count = m_UVCount; count > 0; count -= BUCKET_SIZE ) {
 			m_UVs.push_back( new float2[BUCKET_SIZE] );
 			fp->Read( m_UVs.back(), Min( BUCKET_SIZE, count )*sizeof(float2) );
 		}
-		EraseContainer( m_Triangles );
+		for( int count = m_NormalCount; count > 0; count -= BUCKET_SIZE ) {
+			m_Normals.push_back( new float3[BUCKET_SIZE] );
+			fp->Read( m_Normals.back(), Min( BUCKET_SIZE, count )*sizeof(float3) );
+		}
 		for( int count = m_TriangleCount; count > 0; count -= BUCKET_SIZE ) {
 			m_Triangles.push_back( new Triangle[BUCKET_SIZE] );
 			fp->Read( m_Triangles.back(), Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 		}
-
-		NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
+		ShowStats( pwFilename );
 
 		wstring name = NanoCore::StrGetPath( pwFilename );
 		name += NanoCore::StrMbsToWcs( m_Mtllib.c_str());
@@ -184,10 +202,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		return false;
 	NanoCore::TextFile tf( fp );
 
-	m_PositionCount = m_UVCount = m_TriangleCount = 0;
-
 	int materialID = 0, lineNum = 0;
-
 	aabb box;
 
 	char line[1024];
@@ -222,6 +237,10 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 					//uv.x = 1.0f - uv.x;
 					uv.y = 1.0f - uv.y;
 					AddElement( uv, m_UVs, m_UVCount );
+				} else if( line[1] == 'n' ) {
+					float3 n;
+					sscanf( line+3, "%f %f %f", &n.x, &n.y, &n.z );
+					AddElement( n, m_Normals, m_NormalCount );
 				} else if( line[1] == ' ' ) {
 					float3 pos;
 					sscanf( line+2, "%f %f %f", &pos.x, &pos.y, &pos.z );
@@ -239,41 +258,43 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 				assert( materialID >= 0 && materialID < m_Materials.size() );
 				char * p = line+2;
 
-				bool bTexCoords = strchr( p, '/' ) != NULL;
+				const char * sep1 = strchr( p, '/' );
+				const char * sep2 = sep1 ? strchr(sep1+1, '/') : NULL;
+
+				bool bNormals = sep2 != NULL;
+				bool bUVs = sep1 != NULL;
 
 				for( int i=0; p; ) {
 
-					if( bTexCoords ) {
+					f.uv[i] = f.normal[i] = -1;
+					if( bNormals ) {
+						if( sscanf( p, "%d/%d/%d", f.pos+i, f.uv+i, f.normal+i ) != 3 )
+							break;
+					} else if( bUVs ) {
 						if( sscanf( p, "%d/%d", f.pos + i, f.uv + i ) != 2 )
 							break;
 					} else {
 						if( sscanf( p, "%d", f.pos + i ) != 1 )
 							break;
-						f.uv[0] = f.uv[1] = f.uv[2] = -1;
 					}
 
-					if( f.pos[i] > 0 )
-						f.pos[i]--;
-					else
-						f.pos[i] = m_PositionCount + f.pos[i];
-
-					if( bTexCoords ) {
-						if( f.uv[i] > 0 )
-							f.uv[i]--;
-						else
-							f.uv[i] = m_UVCount + f.uv[i];
+					f.pos[i] += (f.pos[i] > 0) ? -1 : m_PositionCount;
+					if( bUVs ) {
+						f.uv[i] += (f.uv[i] > 0) ? -1 : m_UVCount;
+					}
+					if( bNormals ) {
+						f.normal[i] += (f.normal[i] > 0) ? -1 : m_NormalCount;
 					}
 
 					if( f.pos[i] >= m_PositionCount )
 						break;
-					if( bTexCoords && f.uv[i] >= m_UVCount )
-						f.uv[i] = 0;
 
 					// add a face per each vertex after first 2 - create a fan of triangles
 					if( i == 2 ) {
 						AddElement( f, m_Triangles, m_TriangleCount );
 						f.pos[1] = f.pos[2];
 						f.uv[1] = f.uv[2];
+						f.normal[1] = f.normal[2];
 					} else
 						i++;
 
@@ -286,7 +307,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 		}
 		m_Progress = int( tf.Tell() * 100 / tf.GetSize() );
 	}
-	NanoCore::DebugOutput( "OBJ file: %ls\n\t%d vertices\n\t%d UV coords\n\t%d triangles\n", pwFilename, m_PositionCount, m_UVCount, m_TriangleCount );
+	ShowStats( pwFilename );
 	NanoCore::DebugOutput( "\tbox min: %0.3f, %0.3f, %0.3f\n\tbox max: %0.3f, %0.3f, %0.3f\n", box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z );
 	m_Progress = 100;
 	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the OBJ file into binary for faster loading?", true ))
@@ -294,8 +315,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 	return true;
 }
 
-void ObjectFileLoader::Save( const wchar_t * pwFilename )
-{
+void ObjectFileLoader::Save( const wchar_t * pwFilename ) {
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( pwFilename, NanoCore::FS::efWriteTrunc );
 	if( !fp )
 		return;
@@ -306,6 +326,7 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename )
 
 	fp->Write( &m_PositionCount, sizeof(m_PositionCount) );
 	fp->Write( &m_UVCount, sizeof(m_UVCount) );
+	fp->Write( &m_NormalCount, sizeof(m_NormalCount) );
 	fp->Write( &m_TriangleCount, sizeof(m_TriangleCount) );
 
 	for( int i=0, count = m_PositionCount; count > 0; ++i, count -= BUCKET_SIZE ) {
@@ -314,13 +335,15 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename )
 	for( int i=0, count = m_UVCount; count > 0; ++i, count -= BUCKET_SIZE ) {
 		fp->Write( m_UVs[i], Min( BUCKET_SIZE, count )*sizeof(float2) );
 	}
+	for( int i=0, count = m_NormalCount; count > 0; ++i, count -= BUCKET_SIZE ) {
+		fp->Write( m_Normals[i], Min( BUCKET_SIZE, count )*sizeof(float2) );
+	}
 	for( int i=0, count = m_TriangleCount; count > 0; ++i, count -= BUCKET_SIZE ) {
 		fp->Write( m_Triangles[i], Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 	}
 }
 
-IObjectFileLoader * IObjectFileLoader::Create()
-{
+IObjectFileLoader * IObjectFileLoader::Create() {
 	return new ObjectFileLoader();
 }
 

@@ -22,6 +22,7 @@ struct Triangle
 #endif
 
 	float2 uv[3];
+	float3 normal[3];
 	int    mtl;
 
 #ifdef KEEP_TRIANGLE_ID
@@ -33,6 +34,12 @@ struct Triangle
 		float v = barycentric_pos.y;
 		float w = 1.0f - u - v;
 		return uv[0]*u + uv[1]*v + uv[2]*w;
+	}
+	float3 GetNormal( float2 barycentric_pos ) const {
+		float u = barycentric_pos.x;
+		float v = barycentric_pos.y;
+		float w = 1.0f - u - v;
+		return normal[0]*u + normal[1]*v + normal[2]*w;
 	}
 };
 

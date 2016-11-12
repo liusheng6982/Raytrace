@@ -4,6 +4,10 @@
 	- tangent space basis, generation, per-pixel
 	- BRDF specular
 	- emissive
+	- correct sky
+	- rendering to float buffer
+	- AA
+	- DoF
 
 
 	- mip maps

@@ -55,19 +55,22 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 
 		for( int j=0; j<3; ++j ) {
 			t.pos[j] = *pModel->GetVertexPos( p->pos[j] );
-			const float2 * pUV = pModel->GetVertexUV( p->uv[j] );
-			if( pUV ) t.uv[j] = *pUV;
-
-			float x = t.pos[j].x;
-
 			bx += t.pos[j];
 		}
-
 		t.n = cross( t.pos[1] - t.pos[0], t.pos[2] - t.pos[0] );
-		//if( len( t.n ) < 0.00001f )
-		//	break;
 		t.n = normalize( t.n );
 		t.d = -dot( t.n, t.pos[0] );
+
+		for( int j=0; j<3; ++j ) {
+			const float2 * pUV = pModel->GetVertexUV( p->uv[j] );
+			if( pUV ) t.uv[j] = *pUV;
+			if( p->normal[j] >= 0 ) {
+				const float3 * pNormal = pModel->GetVertexNormal( p->normal[j] );
+				t.normal[j] = *pNormal;
+			} else {
+				t.normal[j] = t.n;
+			}
+		}
 
 #ifdef BARYCENTRIC_DATA_TRIANGLES
 		t.v0 = t.pos[1] - t.pos[0];
@@ -255,7 +258,7 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 		if( u < -EPSILON || v < -EPSILON || u+v > 1+EPSILON ) continue;
 
 		if( k < ray.hitlen ) {
-			ray.n = t.n;
+			//ray.n = t.n;
 			ray.barycentric = float2( u, v );
 			ray.hit = hit;
 			ray.hitlen = k;
@@ -272,6 +275,8 @@ void KDTree::Intersect( RayInfo & ray ) {
 	ray.Clear();
 	if( !m_Tree.empty())
 		Intersect_r( 0, ray );
+	if( ray.tri )
+		ray.n = ray.tri->GetNormal( ray.barycentric );
 }
 
 void RayInfo::Init( int x, int y, const Camera & cam, int width, int height ) {

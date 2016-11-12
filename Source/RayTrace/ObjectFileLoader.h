@@ -14,7 +14,7 @@ public:
 	virtual int  GetLoadingProgress() = 0;
 
 	struct Triangle {
-		int pos[3], uv[3];
+		int pos[3], uv[3], normal[3];
 		int material;
 	};
 
@@ -28,6 +28,7 @@ public:
 
 	virtual const float3   * GetVertexPos( int i ) = 0;
 	virtual const float2   * GetVertexUV( int i ) = 0;
+	virtual const float3   * GetVertexNormal( int i ) = 0;
 	virtual const Triangle * GetTriangle( int face ) = 0;
 	virtual int              GetNumTriangles() = 0;
 	virtual const Material * GetMaterial( int i ) = 0;
