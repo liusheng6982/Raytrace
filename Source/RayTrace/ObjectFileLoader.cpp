@@ -208,13 +208,19 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename )
 					std::string s( line+7 );
 					NanoCore::StrTrim( s );
 					NanoCore::StrLwr( s );
-					materialID = m_MaterialToIndex[s.c_str()];
+					if( m_MaterialToIndex.find( s ) == m_MaterialToIndex.end()) {
+						NanoCore::DebugOutput( "Warning: material '%s' not found in material library!\n", s.c_str());
+						materialID = 0;
+					} else
+						materialID = m_MaterialToIndex[s];
 				}
 				break;
 			case 'v':
 				if( line[1] == 't') {
 					float2 uv;
 					sscanf( line+3, "%f %f", &uv.x, &uv.y );
+					//uv.x = 1.0f - uv.x;
+					uv.y = 1.0f - uv.y;
 					AddElement( uv, m_UVs, m_UVCount );
 				} else if( line[1] == ' ' ) {
 					float3 pos;

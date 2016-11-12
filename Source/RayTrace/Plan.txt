@@ -1,8 +1,14 @@
 - Top priority
-	- smart pointers in File
+	+ smart pointers in File
+	- normals, generation if none
+	- tangent space basis, generation, per-pixel
+	- BRDF specular
+	- emissive
+
+
 	- mip maps
 	- GI bounces
-	- Sky / sun info - specify sun position/strength/color + sky strength/color
+	+ Sky / sun info - specify sun position/strength/color + sky strength/color
 	- Sky cubemap?
 	- depth preview mode
 	- normalmap preview mode
@@ -23,7 +29,7 @@
 
 - NanoCore
 	+ File class
-	- move Image here, make it load BMP/JPG
+	+ move Image here, make it load BMP/JPG
 	- move Camera here
 
 - Show more info
@@ -33,7 +39,7 @@
 
 - Textures
 	+ parsing materials
-	- loading JPG
+	+ loading JPG
 	+ loading of BMP files
 	- compute mipmaps
 	- find normalmap/gloss maps

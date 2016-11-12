@@ -8,7 +8,7 @@
 
 
 #define BARYCENTRIC_DATA_TRIANGLES
-
+//#define KEEP_TRIANGLE_ID
 
 
 struct Triangle
@@ -23,12 +23,16 @@ struct Triangle
 
 	float2 uv[3];
 	int    mtl;
-	int    triangleID;
+
+#ifdef KEEP_TRIANGLE_ID
+	int triangleID;
+#endif
 
 	float2 GetUV( float2 barycentric_pos ) const {
-		float2 uv10 = uv[0] - uv[1];
-		float2 uv20 = uv[0] - uv[2];
-		return uv10 * barycentric_pos.x + uv20 * barycentric_pos.y - uv[0];
+		float u = barycentric_pos.x;
+		float v = barycentric_pos.y;
+		float w = 1.0f - u - v;
+		return uv[0]*u + uv[1]*v + uv[2]*w;
 	}
 };
 

@@ -36,8 +36,21 @@ void Image::Init( int w, int h, int bpp ) {
 }
 
 void Image::Fill( uint32 color ) {
-	if( m_pBuffer )
-		memset( m_pBuffer, 0, m_width*m_height*(m_bpp/8) );
+	if( m_pBuffer ) {
+		uint8 rgb[4] = { color&0xFF, (color>>8)&0xFF, (color>>16)&0xFF, (color>>24) };
+		for( int i=0, n=m_width*m_height; i<n; ++i ) {
+			switch( m_bpp ) {
+				case 8:
+					m_pBuffer[i] = rgb[0]; break;
+				case 16:
+					m_pBuffer[i*2] = rgb[0]; m_pBuffer[i*2+1] = rgb[1]; break;
+				case 24:
+					m_pBuffer[i*3] = rgb[0]; m_pBuffer[i*3+1] = rgb[1]; m_pBuffer[i*3+2] = rgb[2]; break;
+				case 32:
+					((uint32*)(m_pBuffer + i*4))[0] = color; break;
+			}
+		}
+	}
 }
 
 int Image::WriteAsBMP( const wchar_t * name ) {

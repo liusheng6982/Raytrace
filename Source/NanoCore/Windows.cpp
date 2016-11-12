@@ -1,10 +1,11 @@
+#include "Windows.h"
 #include <windows.h>
 #include <tchar.h>
 #include <vector>
 #include <map>
-#include "Windows.h"
 
 
+#undef DrawText
 
 extern int Main();
 
@@ -178,27 +179,26 @@ std::wstring WindowMain::ChooseFile( const wchar_t * pwFolder, const wchar_t * p
 	return std::wstring(wBuffer);
 }
 
-void WindowMain::DrawImage( int x, int y, int w, int h, const uint8 * pImage, int iw, int ih, int bpp )
-{
+void WindowMain::DrawImage( int x, int y, int w, int h, const uint8 * pImage, int iw, int ih, int bpp ) {
 	if( !s_hDrawDC )
 		return;
 	static BITMAPINFO bmp = { { sizeof(BITMAPINFOHEADER), 0, 0, 1, bpp, BI_RGB, 0, 0, 0, 0, 0 } };
 	bmp.bmiHeader.biWidth = iw;
 	bmp.bmiHeader.biHeight = ih;
-	int ret = StretchDIBits( s_hDrawDC, x, y, w, h, 0, 0, iw, ih, pImage, &bmp, DIB_RGB_COLORS, SRCCOPY );
+	StretchDIBits( s_hDrawDC, x, y, w, h, 0, 0, iw, ih, pImage, &bmp, DIB_RGB_COLORS, SRCCOPY );
 }
 
-void WindowMain::DrawText( int x, int y, const char * pcText )
-{
+void WindowMain::DrawText( int x, int y, const char * pcText, uint32 color ) {
 	if( !s_hDrawDC )
 		return;
+	SetBkMode( s_hDrawDC, TRANSPARENT );
+	SetTextColor( s_hDrawDC, color );
 	TextOutA( s_hDrawDC, x, y, pcText, (int)strlen(pcText) );
 }
 
 static std::vector<HMENU> s_Menus;
 
-int WindowMain::CreateMenu()
-{
+int WindowMain::CreateMenu() {
 	s_Menus.push_back( ::CreateMenu() );
 	if( s_Menus.size() == 1 ) {
 		::SetMenu( g_hWnd, s_Menus[0] );
@@ -296,7 +296,7 @@ static void CreateDialogElements( HWND hWnd )
 			sprintf_s( buf, "%d", *it->i );
 
 		CreateWindowA( "STATIC", it->name.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 10, y, 220, 20, hWnd, 0, g_hInstance, NULL );
-		it->hWnd = CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 230, y, 50, 20, hWnd, (HMENU)id, g_hInstance, NULL );
+		it->hWnd = CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 230, y, 150, 20, hWnd, (HMENU)id, g_hInstance, NULL );
 		y += 20;
 	}
 	y += 20;
@@ -336,21 +336,23 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 				pDialog->OnOK();
 				DestroyWindow( hWnd );
 				UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
-				EnableWindow( g_hWnd, TRUE );
+				UpdateWindow( g_hWnd );
 				ShowWindow( g_hWnd, SW_SHOW );
+				EnableWindow( g_hWnd, TRUE );
 				s_wid.erase( s_wid.find( hWnd ));
 				return 0;
 			}
 			break;
-							 }
+		}
 		case IDCANCEL:
 			if( HIWORD(wParam) == BN_CLICKED ) {
 				pDialog->m_pImpl->items.clear();
 				s_wid.erase( s_wid.find( hWnd ));
 				DestroyWindow( hWnd );
 				UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
-				EnableWindow( g_hWnd, TRUE );
+				UpdateWindow( g_hWnd );
 				ShowWindow( g_hWnd, SW_SHOW );
+				EnableWindow( g_hWnd, TRUE );
 				return 0;
 			}
 			break;

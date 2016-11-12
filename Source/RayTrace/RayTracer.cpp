@@ -257,42 +257,46 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 		RayInfo rSun;
 
 		switch( m_Context.Shading ) {
-			case eShading_ColoredCubeShadowed:
-				if( m_Context.SunSamples ) {
-					int intersect = 0;
+			case eShading_ColoredCubeShadowed: {
+					rSun.pos = ri.GetHit();
 
-					float len = ncTan( DEG2RAD(m_Context.SunDiskAngle) * 0.5f );
+					if( dot( ri.dir, ri.n ) < 0 ) rSun.pos += ri.n*0.01f; else rSun.pos += -ri.n*0.01f;
 
-					for( int i=0; i<m_Context.SunSamples; ++i )
-					{
-						rSun.pos = ri.GetHit() + ri.n*0.01f;
-						rSun.dir = m_SunDir;
-
-						if( m_Context.SunSamples > 1 ) {
-							rSun.dir += randUnitSphere()*len;
-							rSun.dir = normalize( rSun.dir );
-						}
-
-						rSun.tri = NULL;
-						rSun.hitlen = 10000000.0f;
-						m_pKDTree->Intersect( rSun );
-						if( rSun.tri ) intersect++;
-					}
-					float shadow = float(intersect) / m_Context.SunSamples;
+					rSun.dir = m_SunDir;
+					m_pKDTree->Intersect( rSun );
+					float shadow = rSun.tri ? 1.0f : 0.0f;
 					shade = 255 - shadow*200.0f;
-				}
-			case eShading_ColoredCube:
+			}
+			case eShading_ColoredCube: {
 				pixel[0] = int((ri.n.x*0.5f+0.5f) * shade);
 				pixel[1] = int((ri.n.y*0.5f+0.5f) * shade);
 				pixel[2] = int((ri.n.z*0.5f+0.5f) * shade);
+
+				/*pixel[0] = int(ri.barycentric.x*255.0f);
+				pixel[1] = int(ri.barycentric.y*255.0f);
+				pixel[2] = int((1.0f-ri.barycentric.x-ri.barycentric.y)*255.0f);
+
+				float2 uv = ri.tri->GetUV( ri.barycentric );
+
+				pixel[0] = int(uv.x*255.0f);
+				pixel[1] = int(uv.y*255.0f);
+				pixel[2] = 0;*/
+
 				break;
+		}
 		case eShading_TriangleID: {
+#ifdef KEEP_TRIANGLE_ID
 			uint32 c = ri.tri->triangleID ^ (ri.tri->triangleID << 18) ^ (ri.tri->triangleID << 5);
+#else
+			uint32 c = (uint32)ri.tri;
+#endif
 			pixel[0] = c&0xFF;
 			pixel[1] = (c>>8)&0xFF;
 			pixel[2] = (c>>16)&0xFF;
+#ifdef KEEP_TRIANGLE_ID
 			if( ri.tri->triangleID == m_SelectedTriangle )
 				pixel[0] = pixel[1] = pixel[2] = 0xFF;
+#endif
 			break;
 		}
 		case eShading_Checker: {
@@ -364,6 +368,14 @@ static float3 BRDF( float3 V, float3 L, float3 N, float3 LightColor, const Raytr
 	return LightColor * Albedo * Max( dot( N, L ), 0.0f );
 }
 
+static void Tonemap( const float3 & hdrColor, int * ldrColor ) {
+	float lum = dot( hdrColor, float3(0.33f,0.55f,0.12f) );
+	float3 color = hdrColor * ( 1.0f / (1.0f + lum) );
+	ldrColor[0] = int(color.x*255.0f);
+	ldrColor[1] = int(color.y*255.0f);
+	ldrColor[2] = int(color.z*255.0f);
+}
+
 float3 Raytracer::RaytraceRay( RayInfo & ri, int bounces ) {
 	float3 Sky = m_Context.SkyColor * m_Context.SkyStrength;
 
@@ -425,9 +437,7 @@ void Raytracer::RaytracePixel( int x, int y, int * pixel )
 
 	float3 color = RaytraceRay( ri, m_Context.GIBounces );
 
-	pixel[0] = int( color.x * 255.0f );
-	pixel[1] = int( color.y * 255.0f );
-	pixel[2] = int( color.z * 255.0f );
+	Tonemap( color, pixel );
 }
 
 static std::vector<int> progressive_order;
@@ -489,7 +499,7 @@ void SpawnProgressiveJobsJob::Execute() {
 		JobsLog( "SpawnProgressiveJobsJob: adding self\n" );
 		NanoCore::JobManager::AddJob( this, 0 );
 	} else {
-		NanoCore::DebugOutput( "Rendering finished for %0.3f s\n", float(NanoCore::TickToMicroseconds( NanoCore::GetTicks() - t0 )) / 1000.0f );
+		NanoCore::DebugOutput( "Rendering finished for %0.3f ms\n", float(NanoCore::TickToMicroseconds( NanoCore::GetTicks() - t0 )) / 1000.0f );
 	}
 }
 

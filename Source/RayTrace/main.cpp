@@ -25,15 +25,23 @@ public:
 			wchar_t buf[64];
 			swprintf( buf, 64, L"Loading %d %%", m_pLoader->GetLoadingProgress());
 			status += buf;
-		} else
-			status += L"Building KD-tree";
+		} else {
+			NanoCore::csScope cs( m_csStatus );
+			status = m_Status;
+		}
+	}
+	void SetStatus( const wchar_t * s ) {
+		NanoCore::csScope cs( m_csStatus );
+		m_Status = s;
 	}
 	virtual void Run( void* ) {
 		m_pLoader = IObjectFileLoader::Create();
 		m_bLoading = true;
 		m_pLoader->Load( m_wFile.c_str() );
 		m_bLoading = false;
-		m_pTree->Build( m_pLoader, 40 );
+		SetStatus( L"Building KD-tree" );
+		m_pTree->Build( m_pLoader, 8 );
+		SetStatus( L"Loading materials" );
 		m_pRaytracer->LoadMaterials( *m_pLoader );
 		OnTerminate();
 	}
@@ -50,6 +58,8 @@ private:
 	IObjectFileLoader * m_pLoader;
 	Raytracer * m_pRaytracer;
 	bool m_bLoading;
+	std::wstring m_Status;
+	NanoCore::CriticalSection m_csStatus;
 };
 
 class MainWnd : public NanoCore::WindowMain
@@ -167,16 +177,22 @@ public:
 
 		m_UpdateMs = 20;
 		m_bCtrlKey = false;
+		m_strBottomHelpLine = "Press Space to open file";
 	}
 	~MainWnd() {
 	}
 	virtual void OnKey( int key, bool bDown ) {
 		switch( key ) {
 			case 32:
-				if( m_State == STATE_PREVIEW && bDown ) {
-					m_State = STATE_RENDERING;
-					m_Image.Init( GetWidth(), GetHeight(), 24 );
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
+				if( m_KDTree.Empty()) {
+					m_State = STATE_LOADING;
+					LoadModel();
+				} else {
+					if( m_State == STATE_PREVIEW && bDown ) {
+						m_State = STATE_RENDERING;
+						m_Image.Init( GetWidth(), GetHeight(), 24 );
+						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
+					}
 				}
 				break;
 			case 13:
@@ -202,8 +218,7 @@ public:
 				break;
 		}
 	}
-	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel )
-	{
+	virtual void OnMouse( int x, int y, int btn_down, int btn_up, int btn_dblclick, int wheel ) {
 		if( m_State != STATE_PREVIEW )
 			return;
 
@@ -235,11 +250,13 @@ public:
 			RightClick( x, y );
 		}
 	}
-	virtual void OnSize( int w, int h )
-	{
-		m_Raytracer.Stop();
-		if( w && h ) {
+	virtual void OnSize( int w, int h ) {
+		if( !w || !h )
+			return;
+		if( m_Image.GetWidth() != w || m_Image.GetHeight() != h ) {
+			m_Raytracer.Stop();
 			m_Image.Init( m_PreviewResolution, m_PreviewResolution * h / w, 24 );
+			m_Image.Fill( 0x303540 );
 			m_bInvalidate = true;
 		}
 	}
@@ -247,6 +264,11 @@ public:
 	{
 		if( m_Image.GetWidth()) {
 			DrawImage( 0, 0, GetWidth(), GetHeight(), m_Image.GetImageAt(0,0), m_Image.GetWidth(), m_Image.GetHeight(), 24 );
+
+			if( !m_strBottomHelpLine.empty()) {
+				DrawText( 11, GetHeight() - 19, m_strBottomHelpLine.c_str(), 0x000000 );
+				DrawText( 10, GetHeight() - 20, m_strBottomHelpLine.c_str(), 0xFFFFFF );
+			}
 		}
 	}
 	virtual void OnUpdate()
@@ -382,11 +404,15 @@ public:
 		m_Raytracer.m_DebugX = x;
 		m_Raytracer.m_DebugY = y;
 
-		NanoCore::DebugOutput( "Triangle picker:\n" );
 		if( ri.tri ) {
-			NanoCore::DebugOutput( "  triangleID: %d\n", ri.tri->triangleID );
+#ifdef KEEP_TRIANGLE_ID
+			NanoCore::DebugOutput( "Picked triangleID: %d\n", ri.tri->triangleID );
 			m_Raytracer.m_SelectedTriangle = ri.tri->triangleID;
-			NanoCore::DebugOutput( "  material: %s (%d)\n\n", m_Raytracer.m_Materials[ri.tri->mtl].name.c_str(), ri.tri->mtl );
+#endif
+			char pc[128];
+			sprintf( pc, "Picked material '%s' (%d) at distance %0.3f", m_Raytracer.m_Materials[ri.tri->mtl].name.c_str(), ri.tri->mtl, ri.hitlen );
+			NanoCore::DebugOutput( pc );
+			m_strBottomHelpLine = pc;
 		} else {
 			m_Raytracer.m_SelectedTriangle = -1;
 		}
@@ -483,7 +509,7 @@ public:
 	}
 
 	std::wstring    m_wFile;
-	std::string     m_strStatus;
+	std::string     m_strStatus, m_strBottomHelpLine;
 	LoadingThread   m_LoadingThread;
 	KDTree          m_KDTree;
 	NanoCore::Image m_Image;

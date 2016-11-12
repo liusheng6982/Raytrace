@@ -48,7 +48,9 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 	for( int i=0; i<numTris; ++i ) {
 		Triangle & t = m_Triangles[i];
 		const IObjectFileLoader::Triangle * p = pModel->GetTriangle( i );
+#ifdef KEEP_TRIANGLE_ID
 		t.triangleID = i;
+#endif
 		t.mtl = p->material;
 
 		for( int j=0; j<3; ++j ) {
@@ -244,8 +246,9 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 
 		// Compute barycentric coordinates
 
-		float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-		float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+		float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
+		float w = (dot00 * dot12 - dot01 * dot02) * invDenom;
+		float u = 1.0f - v - w;
 
 		// Check if point is in triangle
 
