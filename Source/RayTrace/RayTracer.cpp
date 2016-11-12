@@ -7,6 +7,7 @@
 
 
 
+
 //#define JobsLog NanoCore::DebugOutput
 #define JobsLog
 
@@ -365,11 +366,17 @@ static float3 GetTexel( const NanoCore::Image::Ptr & pImage, float2 uv ) {
 
 static float3 BRDF( float3 V, float3 L, float3 N, float3 LightColor, const Raytracer::Material & M, float2 uv ) {
 	float3 Albedo = GetTexel( M.pDiffuseMap, uv ) * M.Kd;
-	return LightColor * Albedo * Max( dot( N, L ), 0.0f );
+	float3 Diffuse = LightColor * Albedo * Max( dot( N, L ), 0.0f );
+
+	float3 H = normalize( V + L );
+	float spec = Max( dot( N, H ), 0.0f );
+	spec = ncPow( spec, M.Ns );
+
+	return Diffuse + LightColor*spec;
 }
 
 static void Tonemap( const float3 & hdrColor, int * ldrColor ) {
-	float lum = dot( hdrColor, float3(0.33f,0.55f,0.12f) );
+	float lum = Max( hdrColor.x, Max( hdrColor.y, hdrColor.z ));
 	float3 color = hdrColor * ( 1.0f / (1.0f + lum) );
 	ldrColor[0] = int(color.x*255.0f);
 	ldrColor[1] = int(color.y*255.0f);
@@ -617,6 +624,7 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader ) {
 		dst.Ks = src->Ks;
 		dst.Ke = src->Ke;
 		dst.Tr = src->Transparency;
+		dst.Ns = src->Ns;
 
 		dst.pDiffuseMap = LoadImage( path, src->mapKd );
 		dst.pSpecularMap = LoadImage( path, src->mapKs );

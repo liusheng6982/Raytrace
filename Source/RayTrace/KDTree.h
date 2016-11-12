@@ -39,7 +39,7 @@ struct Triangle
 		float u = barycentric_pos.x;
 		float v = barycentric_pos.y;
 		float w = 1.0f - u - v;
-		return normal[0]*u + normal[1]*v + normal[2]*w;
+		return normalize( normal[0]*u + normal[1]*v + normal[2]*w );
 	}
 };
 

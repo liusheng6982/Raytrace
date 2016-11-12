@@ -30,3 +30,7 @@ void  ncSinCos( float x, float & s, float & c )
 float ncFloor( float x ) {
 	return floorf( x );
 }
+
+float ncPow( float x, float y ) {
+	return powf( x, y );
+}

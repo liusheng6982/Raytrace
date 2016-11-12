@@ -15,6 +15,7 @@ float ncSin( float x );
 float ncCos( float x );
 void  ncSinCos( float x, float & s, float & c );
 float ncFloor( float x );
+float ncPow( float x, float y );
 
 
 struct float2

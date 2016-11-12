@@ -75,7 +75,7 @@ public:
 	struct Material {
 		std::string name;
 		NanoCore::Image::Ptr pDiffuseMap, pSpecularMap, pBumpMap, pAlphaMap;
-		float Tr;
+		float Tr, Ns;
 		float3 Kd, Ks, Ke;
 	};
 	std::vector<Material> m_Materials;
