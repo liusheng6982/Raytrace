@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <NanoCore/Threads.h>
 #include <NanoCore/Windows.h>
 #include <NanoCore/File.h>
@@ -10,39 +11,21 @@
 
 
 
-class LoadingThread : public NanoCore::Thread
-{
+class LoadingThread : public NanoCore::Thread {
 public:
-	LoadingThread() : m_pTree(NULL), m_pLoader(NULL) {}
-	void Init( std::wstring wFile, KDTree * pTree, Raytracer * pRaytracer ) {
+	LoadingThread() : m_pTree(NULL), m_pLoader(NULL), m_pStatusCallback(NULL) {}
+	void Init( std::wstring wFile, KDTree * pTree, Raytracer * pRaytracer, IStatusCallback * pCallback ) {
 		m_wFile = wFile;
 		m_pTree = pTree;
 		m_pLoader = NULL;
 		m_pRaytracer = pRaytracer;
-	}
-	void GetStatus( std::wstring & status ) {
-		if( m_bLoading && m_pLoader ) {
-			wchar_t buf[64];
-			swprintf( buf, 64, L"Loading %d %%", m_pLoader->GetLoadingProgress());
-			status += buf;
-		} else {
-			NanoCore::csScope cs( m_csStatus );
-			status = m_Status;
-		}
-	}
-	void SetStatus( const wchar_t * s ) {
-		NanoCore::csScope cs( m_csStatus );
-		m_Status = s;
+		m_pStatusCallback = pCallback;
 	}
 	virtual void Run( void* ) {
 		m_pLoader = IObjectFileLoader::Create();
-		m_bLoading = true;
-		m_pLoader->Load( m_wFile.c_str() );
-		m_bLoading = false;
-		SetStatus( L"Building KD-tree" );
-		m_pTree->Build( m_pLoader, 8 );
-		SetStatus( L"Loading materials" );
-		m_pRaytracer->LoadMaterials( *m_pLoader );
+		m_pLoader->Load( m_wFile.c_str(), m_pStatusCallback );
+		m_pTree->Build( m_pLoader, 8, m_pStatusCallback );
+		m_pRaytracer->LoadMaterials( *m_pLoader, m_pStatusCallback );
 		OnTerminate();
 	}
 	virtual void OnTerminate() {
@@ -57,12 +40,10 @@ private:
 	KDTree * m_pTree;
 	IObjectFileLoader * m_pLoader;
 	Raytracer * m_pRaytracer;
-	bool m_bLoading;
-	std::wstring m_Status;
-	NanoCore::CriticalSection m_csStatus;
+	IStatusCallback * m_pStatusCallback;
 };
 
-class MainWnd : public NanoCore::WindowMain
+class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 {
 	const static int IDC_FILE_OPEN = 1001;
 	const static int IDC_FILE_SAVE_IMAGE = 1002;
@@ -178,6 +159,7 @@ public:
 		m_UpdateMs = 20;
 		m_bCtrlKey = false;
 		m_strBottomHelpLine = "Press Space to open file";
+		m_MainThreadId = NanoCore::GetCurrentThreadId();
 	}
 	~MainWnd() {
 	}
@@ -191,7 +173,7 @@ public:
 					if( m_State == STATE_PREVIEW && bDown ) {
 						m_State = STATE_RENDERING;
 						m_Image.Init( GetWidth(), GetHeight(), 24 );
-						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
+						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
 					}
 				}
 				break;
@@ -201,7 +183,7 @@ public:
 					m_Image.Init( GetWidth(), GetHeight(), 24 );
 					Raytracer::Context context = m_PreviewRenderingContext;
 					context.Shading = Raytracer::eShading_Photo;
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, context );
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, context, this );
 				}
 				break;
 			case 27:
@@ -273,14 +255,16 @@ public:
 	}
 	virtual void OnUpdate()
 	{
+		{
+			NanoCore::csScope cs( m_csStatus );
+			if( !m_strStatus.empty()) {
+				SetCaption( m_strStatus.c_str());
+				m_strStatus.clear();
+			}
+		}
 		switch( m_State ) {
 			case STATE_LOADING:
-				if( m_LoadingThread.IsRunning()) {
-					std::wstring str;
-					m_LoadingThread.GetStatus( str );
-					SetStatus( str.c_str() );
-				} else {
-					SetStatus( NULL );
+				if( ! m_LoadingThread.IsRunning()) {
 					CenterCamera();
 					m_State = STATE_PREVIEW;
 					m_UpdateMs = 100;
@@ -291,7 +275,7 @@ public:
 					if( m_Image.GetWidth() != m_PreviewResolution ) {
 						m_Image.Init( m_PreviewResolution, m_PreviewResolution * GetHeight() / GetWidth(), 24 );
 					}
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
+					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
 					m_bInvalidate = false;
 				}
 				Redraw();
@@ -299,14 +283,11 @@ public:
 
 			case STATE_RENDERING:
 				if( m_Raytracer.IsRendering()) {
-					std::wstring str;
-					m_Raytracer.GetStatus( str );
-					SetStatus( str.c_str());
 					Redraw();
 				} else {
 					if( m_bInvalidate ) {
 						m_bInvalidate = false;
-						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext );
+						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
 					} else {
 						m_State = STATE_PREVIEW;
 						m_UpdateMs = 20;
@@ -466,10 +447,12 @@ public:
 		std::wstring wFolder = NanoCore::GetExecutableFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
 		if( !wFile.empty()) {
-			m_LoadingThread.Init( wFile, &m_KDTree, &m_Raytracer );
+			m_LoadingThread.Init( wFile, &m_KDTree, &m_Raytracer, this );
 			m_LoadingThread.Start( NULL );
 
 			m_wFile = wFile;
+			std::wstring w = NanoCore::StrGetFilename( wFile );
+			m_sFilename = NanoCore::StrWcsToMbs( w.c_str() );
 			size_t p = m_wFile.find_last_of( L'.' );
 			if( p != std::wstring::npos )
 				m_wFile.erase( p );
@@ -485,13 +468,28 @@ public:
 			m_Image.WriteAsBMP( wFile.c_str() );
 		}
 	}
-	void SetStatus( const wchar_t * pcStatus ) {
-		std::wstring s = L"Raytracer | by Sergey Miloykov";
-		if( pcStatus && *pcStatus ) {
-			s += L" | ";
-			s += pcStatus;
+	virtual void SetStatus( const char * pcFormat, ... ) {
+#ifdef NDEBUG
+		const char * pcPlatform = (sizeof(void*) == 8) ? "Release(64 bit)" : "Release(32 bit)";
+#else
+		const char * pcPlatform = (sizeof(void*) == 8) ? "Debug(64 bit)" : "Debug(32 bit)";
+#endif
+		char buf[256];
+		int len = sprintf( buf, "Raytracer | %s | https://github.com/sergeiam/ | %s", m_sFilename.c_str(), pcPlatform );
+		if( pcFormat ) {
+			strcat( buf, " | " );
+			len += 3;
+			va_list args;
+			va_start( args, pcFormat );
+			vsprintf( buf + len, pcFormat, args );
+			va_end( args );
 		}
-		SetCaption( s.c_str());
+		if( NanoCore::GetCurrentThreadId() == m_MainThreadId )
+			SetCaption( buf );
+		else {
+			NanoCore::csScope cs( m_csStatus );			
+			m_strStatus = buf;
+		}
 	}
 	void CenterCamera() {
 		if( m_KDTree.Empty())
@@ -509,6 +507,7 @@ public:
 	}
 
 	std::wstring    m_wFile;
+	std::string     m_sFilename;
 	std::string     m_strStatus, m_strBottomHelpLine;
 	LoadingThread   m_LoadingThread;
 	KDTree          m_KDTree;
@@ -525,6 +524,8 @@ public:
 	int             m_UpdateMs;
 	bool            m_bCtrlKey;
 	Raytracer::Context m_PreviewRenderingContext;
+	uint32 m_MainThreadId;
+	NanoCore::CriticalSection m_csStatus;
 };
 
 

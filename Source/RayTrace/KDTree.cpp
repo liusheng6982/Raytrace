@@ -15,7 +15,7 @@ KDTree::KDTree() {
 KDTree::~KDTree() {
 }
 
-void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
+void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode, IStatusCallback * pCallback ) {
 	m_Tree.clear();
 
 	wstring wFile = pModel->GetFilename();
@@ -23,6 +23,8 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
+		pCallback->SetStatus( "Loading cached KD-tree" );
+
 		int numTris, numNodes;
 		fp->Read( &numTris, sizeof(numTris) );
 		fp->Read( &numNodes, sizeof(numNodes) );
@@ -38,6 +40,9 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 			return;
 		}
 	}
+
+	if( pCallback )
+		pCallback->SetStatus( "Processing geometry for KD-tree" );
 
 	const int numTris = pModel->GetNumTriangles();
 
@@ -81,12 +86,18 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 		t.invDenom = 1.f / (t.dot00 * t.dot11 - t.dot01 * t.dot01);
 #endif
 	}
+
+	if( pCallback )
+		pCallback->SetStatus( "Building KD-tree" );
+
 	m_maxTrianglesPerNode = maxTrianglesPerNode;
 	BuildTree( 0, numTris );
 
 	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the KD-tree for faster loading?", true )) {
 		fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efWriteTrunc );
 		if( fp ) {
+			if( pCallback )
+				pCallback->SetStatus( "Caching KD-tree" );
 			int numTris = (int)m_Triangles.size();
 			int numNodes = (int)m_Tree.size();
 			fp->Write( &numTris, sizeof(numTris) );
@@ -98,6 +109,8 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode ) {
 				fp->Write( &m_Tree[i], sizeof(Node) );
 		}
 	}
+	if( pCallback )
+		pCallback->SetStatus( NULL );
 }
 
 int KDTree::BuildTree( int l, int r ) {

@@ -7,11 +7,8 @@ class IObjectFileLoader {
 public:
 	virtual ~IObjectFileLoader() {}
 
-	virtual bool Load( const wchar_t * pwFilename ) = 0;
-
+	virtual bool Load( const wchar_t * pwFilename, IStatusCallback * pCallback ) = 0;
 	virtual const wchar_t * GetFilename() const = 0;
-
-	virtual int  GetLoadingProgress() = 0;
 
 	struct Triangle {
 		int pos[3], uv[3], normal[3];

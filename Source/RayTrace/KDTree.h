@@ -11,8 +11,7 @@
 //#define KEEP_TRIANGLE_ID
 
 
-struct Triangle
-{
+struct Triangle {
 	float3  pos[3], n;
 	float   d;
 
@@ -43,8 +42,7 @@ struct Triangle
 	}
 };
 
-struct RayInfo
-{
+struct RayInfo {
 	float3 pos, dir;
 	float hitlen;
 	float3  n;
@@ -67,8 +65,7 @@ struct RayInfo
 	}
 };
 
-class KDTree
-{
+class KDTree {
 public:
 	struct Node {
 		float3 min, max;
@@ -80,7 +77,7 @@ public:
 	KDTree();
 	~KDTree();
 
-	void Build( IObjectFileLoader * pModel, int maxTrianglesPerNode );
+	void Build( IObjectFileLoader * pModel, int maxTrianglesPerNode, IStatusCallback * pCallback );
 	void Intersect( RayInfo & ray );
 	bool Empty();
 	aabb GetBBox();

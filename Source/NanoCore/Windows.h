@@ -14,7 +14,7 @@ public:
 
 	bool Init( int w, int h );
 	bool Update();
-	void SetCaption( const wchar_t * pwCaption );
+	void SetCaption( const char * caption );
 	void Redraw();
 	void Exit();
 

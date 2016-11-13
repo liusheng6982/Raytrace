@@ -52,8 +52,8 @@ public:
 		{}
 	};
 
-	void LoadMaterials( IObjectFileLoader & loader );
-	void Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree, const Context & context );
+	void LoadMaterials( IObjectFileLoader & loader, IStatusCallback * pCallback );
+	void Render( Camera & camera, NanoCore::Image & image, KDTree & kdTree, const Context & context, IStatusCallback * pCallback );
 	bool IsRendering();
 	void Stop();
 

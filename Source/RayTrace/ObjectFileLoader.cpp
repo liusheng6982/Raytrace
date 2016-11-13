@@ -14,7 +14,7 @@ using namespace std;
 
 class ObjectFileLoader : public IObjectFileLoader {
 public:
-	ObjectFileLoader() : m_Progress(0), m_TriangleCount(0), m_PositionCount(0), m_UVCount(0) {}
+	ObjectFileLoader() : m_TriangleCount(0), m_PositionCount(0), m_UVCount(0) {}
 	virtual ~ObjectFileLoader() {
 		EraseContainer( m_Positions );
 		EraseContainer( m_UVs );
@@ -25,11 +25,8 @@ public:
 		return m_wFilename.c_str();
 	}
 
-	virtual bool Load( const wchar_t * pwFilename );
+	virtual bool Load( const wchar_t * pwFilename, IStatusCallback * pCallback );
 
-	virtual int  GetLoadingProgress() {
-		return m_Progress;
-	}
 	virtual const float3 * GetVertexPos( int i ) {
 		return (i >= 0 && i < m_PositionCount) ? &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
 	}
@@ -52,7 +49,7 @@ public:
 		return (int)m_Materials.size();
 	}
 
-	void Save( const wchar_t * pwFilename );
+	void Save( const wchar_t * pwFilename, IStatusCallback * pCallback );
 	void LoadMaterialLibrary( const wchar_t * name );
 	void ShowStats( const wchar_t * name );
 
@@ -78,8 +75,6 @@ public:
 	int m_PositionCount, m_UVCount, m_NormalCount, m_TriangleCount;
 	wstring m_wFilename;
 	string m_Mtllib;
-
-	volatile int m_Progress;
 };
 
 void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
@@ -146,8 +141,7 @@ void ObjectFileLoader::ShowStats( const wchar_t * name ) {
 	NanoCore::DebugOutput( "\t%d triangles\n", m_TriangleCount );
 }
 
-bool ObjectFileLoader::Load( const wchar_t * pwFilename ) {
-	m_Progress = 0;
+bool ObjectFileLoader::Load( const wchar_t * pwFilename, IStatusCallback * pCallback ) {
 	m_wFilename = pwFilename;
 
 	wstring wFilenameCached( pwFilename );
@@ -161,6 +155,9 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename ) {
 
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFilenameCached.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
+		if( pCallback )
+			pCallback->SetStatus( "Loading cached model" );
+
 		int len;
 		fp->Read( &len, sizeof(len) );
 
@@ -194,6 +191,9 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename ) {
 		name += NanoCore::StrMbsToWcs( m_Mtllib.c_str());
 		LoadMaterialLibrary( name.c_str() );
 
+		if( pCallback )
+			pCallback->SetStatus( NULL );
+
 		return true;
 	}
 
@@ -209,6 +209,9 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename ) {
 	while( !tf.EndOfFile()) {
 		tf.ReadLine( line, 1024 );
 		lineNum++;
+
+		if( lineNum % 64 == 0 && pCallback )
+			pCallback->ShowLoadingProgress( "Parsing model (%d %%)", fp );
 
 		switch( line[0] ) {
 			case 'm':
@@ -305,20 +308,22 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename ) {
 				break;
 			}
 		}
-		m_Progress = int( tf.Tell() * 100 / tf.GetSize() );
 	}
+	if( pCallback ) pCallback->SetStatus( NULL );
 	ShowStats( pwFilename );
 	NanoCore::DebugOutput( "\tbox min: %0.3f, %0.3f, %0.3f\n\tbox max: %0.3f, %0.3f, %0.3f\n", box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z );
-	m_Progress = 100;
 	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the OBJ file into binary for faster loading?", true ))
-		Save( wFilenameCached.c_str());
+		Save( wFilenameCached.c_str(), pCallback );
 	return true;
 }
 
-void ObjectFileLoader::Save( const wchar_t * pwFilename ) {
+void ObjectFileLoader::Save( const wchar_t * pwFilename, IStatusCallback * pCallback ) {
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( pwFilename, NanoCore::FS::efWriteTrunc );
 	if( !fp )
 		return;
+
+	if( pCallback )
+		pCallback->SetStatus( "Caching model" );
 
 	int len = (int)m_Mtllib.size();
 	fp->Write( &len, sizeof(len) );
@@ -341,6 +346,8 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename ) {
 	for( int i=0, count = m_TriangleCount; count > 0; ++i, count -= BUCKET_SIZE ) {
 		fp->Write( m_Triangles[i], Min( BUCKET_SIZE, count )*sizeof(Triangle) );
 	}
+	if( pCallback )
+		pCallback->SetStatus( NULL );
 }
 
 IObjectFileLoader * IObjectFileLoader::Create() {

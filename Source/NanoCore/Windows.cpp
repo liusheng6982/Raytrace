@@ -132,34 +132,28 @@ bool WindowMain::Update()
 	return !s_bQuit;
 }
 
-void WindowMain::SetCaption( const wchar_t * pwCaption )
-{
-	SetWindowText( g_hWnd, pwCaption );
+void WindowMain::SetCaption( const char * caption ) {
+	SetWindowTextA( g_hWnd, caption );
 }
 
-void WindowMain::Redraw()
-{
+void WindowMain::Redraw() {
 	InvalidateRect( g_hWnd, NULL, TRUE );
 	UpdateWindow( g_hWnd );
 }
 
-void WindowMain::Exit()
-{
+void WindowMain::Exit() {
 	::PostQuitMessage( 0 );
 }
 
-int WindowMain::GetWidth()
-{
+int WindowMain::GetWidth() {
 	return s_Width;
 }
 
-int WindowMain::GetHeight()
-{
+int WindowMain::GetHeight() {
 	return s_Height;
 }
 
-std::wstring WindowMain::ChooseFile( const wchar_t * pwFolder, const wchar_t * pwFilter, const wchar_t * pwCaption, bool bLoad )
-{
+std::wstring WindowMain::ChooseFile( const wchar_t * pwFolder, const wchar_t * pwFilter, const wchar_t * pwCaption, bool bLoad ) {
 	wchar_t wBuffer[1024] = {0};
 
 	OPENFILENAME ofn = {0};

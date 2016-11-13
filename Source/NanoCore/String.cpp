@@ -1,5 +1,6 @@
 #include "String.h"
 #include <stdarg.h>
+#include "Common.h"
 
 
 
@@ -58,6 +59,17 @@ std::wstring StrGetPath( std::wstring wFilename ) {
 	if( k == std::wstring::npos ) k = wFilename.find_last_of( L'\\' );
 	if( k != std::wstring::npos ) wFilename.erase( k+1 );
 	return wFilename;
+}
+
+std::wstring StrGetFilename( std::wstring wPathname ) {
+	size_t k1 = wPathname.find_last_of( L'/' );
+	size_t k2 = wPathname.find_last_of( L'\\' );
+
+	if( k1 == std::wstring::npos ) k1 = 0;
+	if( k2 == std::wstring::npos ) k2 = 0;
+
+	size_t k = Max( k1, k2 );
+	return std::wstring( wPathname.begin() + k, wPathname.end() );
 }
 
 void StrReplaceExtension( std::wstring & file, const wchar_t * newext ) {
