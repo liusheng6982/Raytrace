@@ -69,7 +69,7 @@ std::wstring StrGetFilename( std::wstring wPathname ) {
 	if( k2 == std::wstring::npos ) k2 = 0;
 
 	size_t k = Max( k1, k2 );
-	return std::wstring( wPathname.begin() + k, wPathname.end() );
+	return std::wstring( wPathname.begin() + (k ? k+1 : 0), wPathname.end() );
 }
 
 void StrReplaceExtension( std::wstring & file, const wchar_t * newext ) {

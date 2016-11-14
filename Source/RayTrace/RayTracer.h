@@ -23,7 +23,10 @@ public:
 		eShading_ColoredCubeShadowed,
 		eShading_TriangleID,
 		eShading_Checker,
+
 		eShading_Diffuse,
+		eShading_Specular,
+
 		eShading_Previews,
 		eShading_Photo,
 	};
@@ -59,7 +62,7 @@ public:
 
 	void RaytracePixel( int x, int y, int * pixel );
 
-	void GetStatus( std::wstring & status );
+	int GetProgress() const { return m_PixelCompleteCount * 100 / m_TotalPixelCount; }
 
 	volatile int m_PixelCompleteCount;
 	int          m_TotalPixelCount;

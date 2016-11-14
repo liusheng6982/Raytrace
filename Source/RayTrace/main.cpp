@@ -55,6 +55,7 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1202;
 	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1203;
 	const static int IDC_VIEW_PREVIEWMODE_DIFFUSE = 1204;
+	const static int IDC_VIEW_PREVIEWMODE_SPECULAR = 1205;
 	const static int IDC_VIEW_OPTIONS = 1102;
 	const static int IDC_CAMERAS_FIRST = 2000;
 
@@ -174,6 +175,7 @@ public:
 						m_State = STATE_RENDERING;
 						m_Image.Init( GetWidth(), GetHeight(), 24 );
 						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
+						m_strBottomHelpLine = "Press Esc to cancel the rendering";
 					}
 				}
 				break;
@@ -184,6 +186,7 @@ public:
 					Raytracer::Context context = m_PreviewRenderingContext;
 					context.Shading = Raytracer::eShading_Photo;
 					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, context, this );
+					m_strBottomHelpLine = "Press Esc to cancel the rendering";
 				}
 				break;
 			case 27:
@@ -245,8 +248,24 @@ public:
 	virtual void OnDraw()
 	{
 		if( m_Image.GetWidth()) {
-			DrawImage( 0, 0, GetWidth(), GetHeight(), m_Image.GetImageAt(0,0), m_Image.GetWidth(), m_Image.GetHeight(), 24 );
 
+			int percent = m_Raytracer.GetProgress();
+
+			if( percent > 95 || m_State == STATE_PREVIEW ) {
+				DrawImage( 0, 0, GetWidth(), GetHeight(), m_Image.GetImageAt(0,0), m_Image.GetWidth(), m_Image.GetHeight(), 24 );
+			} else {
+				static int lastWidth = 0;
+				percent = Max( percent, 1 );
+				int lw = m_Image.GetWidth()*percent / 100;
+				if( lw % 4 ) lw += 4 - (lw % 4);
+
+				if( lastWidth != lw ) {
+					lastWidth = lw;
+					m_LowresImage.Init( lw, m_Image.GetHeight() * percent / 100, 24 );
+					m_LowresImage.Average( m_Image );
+					DrawImage( 0, 0, GetWidth(), GetHeight(), m_LowresImage.GetImageAt(0,0), m_LowresImage.GetWidth(), m_LowresImage.GetHeight(), 24 );
+				}
+			}
 			if( !m_strBottomHelpLine.empty()) {
 				DrawText( 11, GetHeight() - 19, m_strBottomHelpLine.c_str(), 0x000000 );
 				DrawText( 10, GetHeight() - 20, m_strBottomHelpLine.c_str(), 0xFFFFFF );
@@ -316,6 +335,7 @@ public:
 				AddMenuItem( previewMenu, L"Triangle ID", IDC_VIEW_PREVIEWMODE_TRIANGLEID );
 				AddMenuItem( previewMenu, L"Checker", IDC_VIEW_PREVIEWMODE_CHECKER );
 				AddMenuItem( previewMenu, L"Diffuse map", IDC_VIEW_PREVIEWMODE_DIFFUSE );
+				AddMenuItem( previewMenu, L"Specular map", IDC_VIEW_PREVIEWMODE_SPECULAR );
 			AddMenuItem( viewMenu, L"Options", IDC_VIEW_OPTIONS );
 		AddSubmenu( mainMenu, L"Cameras", m_CamerasMenu );
 	}
@@ -369,6 +389,11 @@ public:
 				m_PreviewRenderingContext.Shading = Raytracer::eShading_Diffuse;
 				m_bInvalidate = true;
 				break;
+			case IDC_VIEW_PREVIEWMODE_SPECULAR:
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_Specular;
+				m_bInvalidate = true;
+				break;
+
 			default:
 				if( id >= IDC_CAMERAS_FIRST ) {
 					m_Camera = m_Cameras[id - IDC_CAMERAS_FIRST];
@@ -511,7 +536,7 @@ public:
 	std::string     m_strStatus, m_strBottomHelpLine;
 	LoadingThread   m_LoadingThread;
 	KDTree          m_KDTree;
-	NanoCore::Image m_Image;
+	NanoCore::Image m_Image, m_LowresImage;
 	Camera          m_Camera;
 	Raytracer       m_Raytracer;
 	bool            m_bInvalidate;

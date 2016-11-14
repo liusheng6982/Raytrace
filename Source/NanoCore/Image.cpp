@@ -6,7 +6,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "3rdparty/stb/stb_image.h"
 
-
+#pragma optimize( "", off )
 
 namespace NanoCore {
 
@@ -216,6 +216,43 @@ void Image::Clear() {
 	delete[] m_pBuffer;
 	m_pBuffer = NULL;
 	m_width = m_height = m_bpp = 0;
+}
+
+void Image::Average( const Image & img ) {
+	if( GetWidth() > img.GetWidth() || GetHeight() > img.GetHeight() || m_bpp != 24 || img.GetBpp() != 24 )
+		return;
+
+	int w = img.GetWidth(), h = img.GetHeight();
+
+	for( int y=0; y<m_height; ++y ) {
+		for( int x=0; x<m_width; ++x ) {
+			int x1 = x * w / m_width;
+			int y1 = y * h / m_height;
+			int x2 = (x+1) * w / m_width;
+			int y2 = (y+1) * h / m_height;
+
+			int pix[3] = {0};
+			int count = 0;
+			for( int i=y1; i<y2; ++i ) {
+				const uint8 * ptr = img.GetImageAt( x1, i );
+				for( int j=0; j<x2-x1; ++j, ptr += 3 ) {
+					if( ptr[0] || ptr[1] || ptr[2] ) {
+						pix[0] += ptr[0];
+						pix[1] += ptr[1];
+						pix[2] += ptr[2];
+						count++;
+					}
+				}
+			}
+			if( count ) {
+				pix[0] /= count;
+				pix[1] /= count;
+				pix[2] /= count;
+			}
+			SetPixel( x, y, pix );
+		}
+	}
+
 }
 
 }

@@ -24,6 +24,14 @@ static float3 randUnitSphere() {
 	return normalize( v );
 }
 
+static float3 GetTexel( const NanoCore::Image::Ptr & pImage, float2 uv ) {
+	if( !pImage )
+		return float3(1,1,1);
+	int pix[4];
+	pImage->GetPixel( uv.x, uv.y, pix );
+	return float3( pix[0]/255.0f, pix[1]/255.0f, pix[2]/255.0f );
+}
+
 static void ComputeProgressiveDistribution( int size, std::vector<int> & order ) {
 	for( int i=0; i<size*size; order.push_back( i++ ));
 	for( int i=0; i<size*size; ++i ) {
@@ -58,6 +66,8 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 		} else
 			break;
 	}
+
+	pixel[0] = pixel[1] = pixel[2] = 0;
 
 	if( ri.tri ) {
 		float shade = 255.0f;
@@ -120,21 +130,30 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 			if( ri.tri->mtl>=0 && !m_Materials.empty()) {
 				const Material & mtl = m_Materials[ri.tri->mtl];
 				const NanoCore::Image::Ptr & img = mtl.pDiffuseMap;
-				if( img && img->GetWidth()) {
-					img->GetPixel( uv.x, uv.y, pixel );
-				} else {
-					pixel[0] = int(mtl.Kd.x * 255.0f);
-					pixel[1] = int(mtl.Kd.y * 255.0f);
-					pixel[2] = int(mtl.Kd.z * 255.0f);
+				if( img ) {
+					float3 tex = GetTexel( img, uv ) * mtl.Kd;
+					pixel[0] = int(tex.x*255.0f);
+					pixel[1] = int(tex.y*255.0f);
+					pixel[2] = int(tex.z*255.0f);
 				}
-			} else {
-				pixel[0] = pixel[1] = pixel[2] = 0;
+			}
+			break;
+		}
+		case eShading_Specular: {
+			float2 uv = ri.tri->GetUV( ri.barycentric );
+			if( ri.tri->mtl >= 0 && !m_Materials.empty()) {
+				const Material & mtl = m_Materials[ri.tri->mtl];
+				const NanoCore::Image::Ptr & img = mtl.pDiffuseMap;
+				if( img ) {
+					float3 tex = GetTexel( img, uv ) * mtl.Ks;
+					pixel[0] = int(tex.x*255.0f);
+					pixel[1] = int(tex.y*255.0f);
+					pixel[2] = int(tex.z*255.0f);
+				}
 			}
 			break;
 		}
 		}
-	} else {
-		pixel[0] = pixel[1] = pixel[2] = 0;
 	}
 }
 
@@ -162,23 +181,24 @@ void Raytracer::TraceRay( RayInfo & ri ) {
 	}
 }
 
-static float3 GetTexel( const NanoCore::Image::Ptr & pImage, float2 uv ) {
-	if( !pImage )
-		return float3(1,1,1);
-	int pix[4];
-	pImage->GetPixel( uv.x, uv.y, pix );
-	return float3( pix[0]/255.0f, pix[1]/255.0f, pix[2]/255.0f );
-}
-
 static float3 BRDF( float3 V, float3 L, float3 N, float3 LightColor, const Raytracer::Material & M, float2 uv ) {
 	float3 Albedo = GetTexel( M.pDiffuseMap, uv ) * M.Kd;
 	float3 Diffuse = LightColor * Albedo * Max( dot( N, L ), 0.0f );
 
-	float3 H = normalize( V + L );
-	float spec = Max( dot( N, H ), 0.0f );
-	spec = ncPow( spec, M.Ns );
+	float3 Contrib(0,0,0);
 
-	return Diffuse + LightColor*spec;
+	Contrib += Diffuse;
+
+	if( M.Ns > 0.0f ) {
+		float3 H = normalize( V + L );
+		float spec = Max( dot( N, H ), 0.0f );
+		spec = ncPow( spec, M.Ns );
+		float3 SpecMap = M.Ks;
+		if( M.pSpecularMap )
+			SpecMap = SpecMap * GetTexel( M.pSpecularMap, uv );
+		Contrib += SpecMap * LightColor * spec;
+	}
+	return Contrib;
 }
 
 static void Tonemap( const float3 & hdrColor, int * ldrColor ) {
@@ -390,15 +410,6 @@ void Raytracer::Render( Camera & camera, NanoCore::Image & image, KDTree & kdTre
 
 bool Raytracer::IsRendering() {
 	return NanoCore::JobManager::IsRunning();
-}
-
-void Raytracer::GetStatus( std::wstring & status ) {
-	if( m_PixelCompleteCount < m_TotalPixelCount ) {
-		status += L" | ";
-		wchar_t buf[128];
-		swprintf( buf, 128, L"%d %%", m_PixelCompleteCount * 100 / m_TotalPixelCount );
-		status += buf;
-	}
 }
 
 NanoCore::Image::Ptr Raytracer::LoadImage( std::wstring path, std::string file ) {
