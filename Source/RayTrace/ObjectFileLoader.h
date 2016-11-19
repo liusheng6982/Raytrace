@@ -19,7 +19,7 @@ public:
 		std::string name;
 		float Ns, Transparency;
 		float3 Ka, Kd, Ks, Ke;
-		std::string mapKa, mapKd, mapKs, mapBump, mapAlpha;
+		std::string mapKa, mapKd, mapKs, mapBump, mapAlpha, mapNs;
 		Material();
 	};
 

@@ -27,9 +27,42 @@ static float3 randUnitSphere() {
 static float3 GetTexel( const NanoCore::Image::Ptr & pImage, float2 uv ) {
 	if( !pImage )
 		return float3(1,1,1);
-	int pix[4];
+	int pix[4] = {0};
 	pImage->GetPixel( uv.x, uv.y, pix );
 	return float3( pix[0]/255.0f, pix[1]/255.0f, pix[2]/255.0f );
+}
+
+static float3 ComputeNormal( RayInfo & ri, const Raytracer::Material & M, float2 uv ) {
+	if( !M.pBumpMap )
+		return ri.n;
+
+	float2 uv0 = ri.tri->uv[1] - ri.tri->uv[0];
+	float2 uv1 = ri.tri->uv[2] - ri.tri->uv[0];
+
+	if( uv1.y == 0.0f ) return ri.n;
+
+	float V = 0.5f;
+	float W = -uv0.y * V / uv1.y;
+
+	float U = 1.0f - V - W;
+
+	float3 N = ri.n;
+	float3 tangent = normalize( ri.tri->pos[0]*U + ri.tri->pos[1]*V + ri.tri->pos[2]*W - ri.tri->pos[0] );
+	float3 bitangent = normalize( cross( N, tangent ) );
+	tangent = cross( bitangent, N );
+
+	float3 tex = GetTexel( M.pBumpMap, uv );
+	tex = tex * 2.0f - 1.0f;
+
+	float3 N2;
+	N2.x = tex.x*tangent.x + tex.y*bitangent.x + tex.z*N.x;
+	N2.y = tex.x*tangent.y + tex.y*bitangent.y + tex.z*N.y;
+	N2.z = tex.x*tangent.z + tex.y*bitangent.z + tex.z*N.z;
+
+	return N2;
+
+	// (u0,v0)*A + (u1,v1)*B = (U,0)
+	// v0*0.5 + v1*B = 0   B = -v0*0.5 / v1
 }
 
 static void ComputeProgressiveDistribution( int size, std::vector<int> & order ) {
@@ -143,13 +176,26 @@ void Raytracer::RaytracePreviewPixel( int x, int y, int * pixel ) {
 			float2 uv = ri.tri->GetUV( ri.barycentric );
 			if( ri.tri->mtl >= 0 && !m_Materials.empty()) {
 				const Material & mtl = m_Materials[ri.tri->mtl];
-				const NanoCore::Image::Ptr & img = mtl.pDiffuseMap;
-				if( img ) {
-					float3 tex = GetTexel( img, uv ) * mtl.Ks;
+				const NanoCore::Image::Ptr & img = mtl.pSpecularMap;
+				const NanoCore::Image::Ptr & img2 = mtl.pRoughnessMap;
+				if( img || img2 ) {
+					float3 tex = GetTexel( img ? img : img2, uv ); // * mtl.Ks;
 					pixel[0] = int(tex.x*255.0f);
 					pixel[1] = int(tex.y*255.0f);
 					pixel[2] = int(tex.z*255.0f);
 				}
+			}
+			break;
+		}
+		case eShading_Bump: {
+			float2 uv = ri.tri->GetUV( ri.barycentric );
+			if( ri.tri->mtl >= 0 && !m_Materials.empty()) {
+				const Material & mtl = m_Materials[ri.tri->mtl];
+				float3 tex = ComputeNormal( ri, mtl, uv );
+				tex = tex*0.5f + 0.5f;
+				pixel[0] = int(tex.x*255.0f);
+				pixel[1] = int(tex.y*255.0f);
+				pixel[2] = int(tex.z*255.0f);
 			}
 			break;
 		}
@@ -187,15 +233,28 @@ static float3 BRDF( float3 V, float3 L, float3 N, float3 LightColor, const Raytr
 
 	float3 Contrib(0,0,0);
 
-	Contrib += Diffuse;
+	//Contrib += Diffuse;
 
-	if( M.Ns > 0.0f ) {
+	if( M.Ns > 0.0f || M.pRoughnessMap ) {
 		float3 H = normalize( V + L );
 		float spec = Max( dot( N, H ), 0.0f );
-		spec = ncPow( spec, M.Ns );
-		float3 SpecMap = M.Ks;
+
+		if( M.pRoughnessMap ) {
+			float r = GetTexel( M.pRoughnessMap, uv ).x;
+			float power = (1.0f - r);
+			power = ncPow( power, 2.0f );
+			power *= 1000.0f;
+
+			spec = ncPow( spec, power ) * (power + 8.0f) / (M_PI*8.0f);
+		} else {
+			spec = ncPow( spec, M.Ns );
+		}
+
+		float3 SpecMap(0,0,0); // = M.Ks;
 		if( M.pSpecularMap )
-			SpecMap = SpecMap * GetTexel( M.pSpecularMap, uv );
+			SpecMap = GetTexel( M.pSpecularMap, uv );
+		else
+			SpecMap = Albedo;
 		Contrib += SpecMap * LightColor * spec;
 	}
 	return Contrib;
@@ -230,6 +289,8 @@ float3 Raytracer::RaytraceRay( RayInfo & ri, int bounces ) {
 	const Material & M = m_Materials.empty() ? mtlWhite : m_Materials[ri.tri->mtl];
 	float3 hit = ri.hit + ri.n * 0.001f;
 
+	float3 N = ComputeNormal( ri, M, UV );
+
 	for( int i=0; i<m_Context.SunSamples; ++i ) {
 		RayInfo rs;
 		rs.pos = hit;
@@ -240,7 +301,7 @@ float3 Raytracer::RaytraceRay( RayInfo & ri, int bounces ) {
 		}
 		TraceRay( rs );
 		if( !rs.tri )
-			Contrib += BRDF( V, m_SunDir, ri.n, Sun, M, UV );
+			Contrib += BRDF( V, m_SunDir, N, Sun, M, UV );
 	}
 	for( int i=0; i<m_Context.GISamples; ++i ) {
 		RayInfo rs;
@@ -250,7 +311,7 @@ float3 Raytracer::RaytraceRay( RayInfo & ri, int bounces ) {
 			rs.dir = reflect( rs.dir, ri.n );
 		TraceRay( rs );
 		if( !rs.tri )
-			Contrib += BRDF( V, rs.dir, ri.n, Sky, M, UV );
+			Contrib += BRDF( V, rs.dir, N, Sky, M, UV );
 		else if( bounces ) {
 			// trace further here....
 		}
@@ -459,6 +520,7 @@ void Raytracer::LoadMaterials( IObjectFileLoader & loader, IStatusCallback * pCa
 		dst.pSpecularMap = LoadImage( path, src->mapKs );
 		dst.pBumpMap = LoadImage( path, src->mapBump );
 		dst.pAlphaMap = LoadImage( path, src->mapAlpha );
+		dst.pRoughnessMap = LoadImage( path, src->mapNs );
 		if( !dst.pAlphaMap && dst.pDiffuseMap && dst.pDiffuseMap->GetBpp() == 32 )
 			dst.pAlphaMap = dst.pDiffuseMap;
 	}

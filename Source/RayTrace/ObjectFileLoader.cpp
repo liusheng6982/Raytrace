@@ -120,6 +120,8 @@ void ObjectFileLoader::LoadMaterialLibrary( const wchar_t * name ) {
 			mtl->mapAlpha = words[ words.size()-1 ].c_str();
 		else if( !strcmp( words[0].c_str(), "bump" ))
 			mtl->mapBump = words[ words.size()-1 ].c_str();
+		else if( !strcmp( words[0].c_str(), "map_ns" ))
+			mtl->mapNs = words[ words.size()-1 ].c_str();
 		else if( words[0] == "kd" )
 		{READ_VEC3(mtl->Kd);}
 		else if( words[0] == "ks" )

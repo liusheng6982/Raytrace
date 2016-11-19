@@ -56,6 +56,7 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 	const static int IDC_VIEW_PREVIEWMODE_CHECKER = 1203;
 	const static int IDC_VIEW_PREVIEWMODE_DIFFUSE = 1204;
 	const static int IDC_VIEW_PREVIEWMODE_SPECULAR = 1205;
+	const static int IDC_VIEW_PREVIEWMODE_BUMP = 1206;
 	const static int IDC_VIEW_OPTIONS = 1102;
 	const static int IDC_CAMERAS_FIRST = 2000;
 
@@ -336,6 +337,7 @@ public:
 				AddMenuItem( previewMenu, L"Checker", IDC_VIEW_PREVIEWMODE_CHECKER );
 				AddMenuItem( previewMenu, L"Diffuse map", IDC_VIEW_PREVIEWMODE_DIFFUSE );
 				AddMenuItem( previewMenu, L"Specular map", IDC_VIEW_PREVIEWMODE_SPECULAR );
+				AddMenuItem( previewMenu, L"Bump map", IDC_VIEW_PREVIEWMODE_BUMP );
 			AddMenuItem( viewMenu, L"Options", IDC_VIEW_OPTIONS );
 		AddSubmenu( mainMenu, L"Cameras", m_CamerasMenu );
 	}
@@ -393,7 +395,10 @@ public:
 				m_PreviewRenderingContext.Shading = Raytracer::eShading_Specular;
 				m_bInvalidate = true;
 				break;
-
+			case IDC_VIEW_PREVIEWMODE_BUMP:
+				m_PreviewRenderingContext.Shading = Raytracer::eShading_Bump;
+				m_bInvalidate = true;
+				break;
 			default:
 				if( id >= IDC_CAMERAS_FIRST ) {
 					m_Camera = m_Cameras[id - IDC_CAMERAS_FIRST];

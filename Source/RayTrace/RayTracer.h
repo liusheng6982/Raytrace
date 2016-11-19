@@ -26,6 +26,7 @@ public:
 
 		eShading_Diffuse,
 		eShading_Specular,
+		eShading_Bump,
 
 		eShading_Previews,
 		eShading_Photo,
@@ -77,7 +78,7 @@ public:
 
 	struct Material {
 		std::string name;
-		NanoCore::Image::Ptr pDiffuseMap, pSpecularMap, pBumpMap, pAlphaMap;
+		NanoCore::Image::Ptr pDiffuseMap, pSpecularMap, pBumpMap, pAlphaMap, pRoughnessMap;
 		float Tr, Ns;
 		float3 Kd, Ks, Ke;
 	};

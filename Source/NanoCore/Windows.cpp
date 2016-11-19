@@ -318,42 +318,34 @@ static void ReadDialogElements( WindowInputDialog * pDialog, HWND hWnd ) {
 static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam ) {
 	WindowInputDialog * pDialog = s_wid[hWnd];
 	switch( message ) {
-	case WM_CREATE:
-		CreateDialogElements( hWnd );
-		break;
-	case WM_COMMAND:
-		switch( LOWORD(wParam)) {
-		case IDOK: {
-			if( HIWORD(wParam) == BN_CLICKED ) {
-				ReadDialogElements( pDialog, hWnd );
-				pDialog->m_pImpl->items.clear();
-				pDialog->OnOK();
-				DestroyWindow( hWnd );
-				UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
-				UpdateWindow( g_hWnd );
-				ShowWindow( g_hWnd, SW_SHOW );
-				EnableWindow( g_hWnd, TRUE );
-				s_wid.erase( s_wid.find( hWnd ));
-				return 0;
+		case WM_CREATE:
+			CreateDialogElements( hWnd );
+			break;
+		case WM_COMMAND:
+			switch( LOWORD(wParam) ) {
+				case IDCANCEL:
+				case IDOK: {
+					if( HIWORD(wParam) == BN_CLICKED ) {
+						if( LOWORD(wParam) == IDOK ) {
+							ReadDialogElements( pDialog, hWnd );
+							pDialog->OnOK();
+						}
+						pDialog->m_pImpl->items.clear();
+						EnableWindow( g_hWnd, TRUE );
+						DestroyWindow( hWnd );
+						UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
+						UpdateWindow( g_hWnd );
+						ShowWindow( g_hWnd, SW_SHOW );
+						s_wid.erase( s_wid.find( hWnd ));
+						return 0;
+					}
+					break;
+				}
+				break;
 			}
 			break;
-		}
-		case IDCANCEL:
-			if( HIWORD(wParam) == BN_CLICKED ) {
-				pDialog->m_pImpl->items.clear();
-				s_wid.erase( s_wid.find( hWnd ));
-				DestroyWindow( hWnd );
-				UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
-				UpdateWindow( g_hWnd );
-				ShowWindow( g_hWnd, SW_SHOW );
-				EnableWindow( g_hWnd, TRUE );
-				return 0;
-			}
-			break;
-		}
-		break;
-	default:
-		return DefWindowProc( hWnd, message, wParam, lParam );
+		default:
+			return DefWindowProc( hWnd, message, wParam, lParam );
 	}
 	return 0;
 }
