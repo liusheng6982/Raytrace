@@ -175,41 +175,6 @@ bool Image::Load( const wchar_t * name ) {
 		return true;
 	}
 	return false;
-
-/*	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( name, NanoCore::FS::efRead );
-	if( !fp )
-		return false;
-
-	char sig[2] = {'B','M'};
-	fp->Read( sig, 2 );
-	if( sig[0] != 'B' || sig[1] != 'M' )
-		return false;
-
-	fp->Seek( 14 );
-
-	BITMAPINFOHEADER bmpih;
-	fp->Read( &bmpih, sizeof(bmpih) );
-
-	if( bmpih.biBitCount != 24 || bmpih.biPlanes != 1 ) {
-		return false;
-	}
-
-	m_width = bmpih.biWidth;
-	m_height = bmpih.biHeight;
-	m_bpp = 24;
-
-	int pw = m_width*3;
-	if( pw % 4 ) pw += 4 - pw%4;
-
-	delete[] m_pBuffer;
-	m_pBuffer = new uint8[m_width*3*m_height];
-
-	uint64 pos = fp->Tell();
-	for( int i=0; i<m_height; ++i ) {
-		fp->Seek( pos + i*pw );
-		fp->Read( m_pBuffer + i*m_width*3, m_width*3 );
-	}
-	return 1;*/
 }
 
 void Image::Clear() {
@@ -252,7 +217,44 @@ void Image::Average( const Image & img ) {
 			SetPixel( x, y, pix );
 		}
 	}
+}
 
+void Image::Stretch( const Image & img ) {
+	if( GetBpp() != img.GetBpp())
+		return;
+	int w = img.GetWidth(), h = img.GetHeight();
+
+	for( int y=0; y<m_height; ++y ) {
+		for( int x=0; x<m_width; ++x ) {
+			int x1 = x * w / m_width;
+			int y1 = y * h / m_height;
+			int x2 = (x+1) * w / m_width;
+			int y2 = (y+1) * h / m_height;
+
+			if( x1 == x2 ) x2++;
+			if( y1 == y2 ) y2++;
+
+			int pix[4] = {0};
+			for( int i=y1; i<y2; ++i ) {
+				const uint8 * ptr = img.GetImageAt( x1, i );
+				int step = m_bpp/8;
+				for( int j=0; j<x2-x1; ++j, ptr += step ) {
+					switch( m_bpp ) {
+						case 32: pix[3] += ptr[3];
+						case 24: pix[2] += ptr[2];
+						case 16: pix[1] += ptr[1];
+						case  8: pix[0] += ptr[0];
+					}
+				}
+			}
+			int div = (x1-x1)*(y2-y1);
+			pix[0] /= div;
+			pix[1] /= div;
+			pix[2] /= div;
+			pix[4] /= div;
+			SetPixel( x, y, pix );
+		}
+	}
 }
 
 }

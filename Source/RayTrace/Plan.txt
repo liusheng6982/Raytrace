@@ -1,4 +1,5 @@
 - Top priority
+	- make a test for MT writing to the same image - chaotic write vs into separate rows per thread (to test the assumption about better performance, when cache lines are owned by threads)
 	+ smart pointers in File
 	- normals, generation if none
 	- tangent space basis, generation, per-pixel

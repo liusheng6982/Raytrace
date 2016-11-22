@@ -1,65 +1,129 @@
-#include "KDTree.h"
 #include <string>
 #include <NanoCore/File.h>
 #include <NanoCore/Windows.h>
+#include "Camera.h"
+#include "Common.h"
 
 using namespace std;
 
 #define EPSILON 0.000001
+#define BARYCENTRIC_DATA_TRIANGLES
+//#define KEEP_TRIANGLE_ID
 
 
 
-KDTree::KDTree() {
+struct Triangle {
+	float3  pos[3], n;
+	float   d;
+
+#ifdef BARYCENTRIC_DATA_TRIANGLES
+	float3 v0, v1;
+	float dot00, dot01, dot11, invDenom;
+#endif
+
+	float2 uv[3];
+	float3 normal[3];
+	int    mtl;
+
+#ifdef KEEP_TRIANGLE_ID
+	int triangleID;
+#endif
+
+	float2 GetUV( float2 barycentric_pos ) const {
+		float u = barycentric_pos.x;
+		float v = barycentric_pos.y;
+		float w = 1.0f - u - v;
+		return uv[0]*u + uv[1]*v + uv[2]*w;
+	}
+	float3 GetNormal( float2 barycentric_pos ) const {
+		float u = barycentric_pos.x;
+		float v = barycentric_pos.y;
+		float w = 1.0f - u - v;
+		return normalize( normal[0]*u + normal[1]*v + normal[2]*w );
+	}
+};
+
+
+
+class KDTree : public IScene {
+public:
+	struct Node {
+		float3 min, max;
+		int axis;
+		int startTriangle, numTriangles;
+		int left, right;
+	};
+
+	KDTree( int maxTrianglesPerNode );
+	~KDTree();
+
+	virtual void Build( const ISceneLoader * pLoader, IStatusCallback * pCallback );
+	virtual bool IntersectRay( const Ray & ray, IntersectResult & hit ) const;
+	virtual bool IsEmpty() const;
+	virtual AABB GetAABB() const;
+	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags );
+
+private:
+	int  BuildTree( int l, int r );
+	void Intersect_r( int node, Ray & ray, IntersectResult & hit ) const;
+
+	std::vector<Triangle> m_Triangles;
+	std::vector<Node> m_Tree;
+	int m_maxTrianglesPerNode;
+};
+
+IScene * CreateKDTree( int maxTrianglesPerNode ) {
+	return new KDTree( maxTrianglesPerNode );
+}
+
+KDTree::KDTree( int maxTrianglesPerNode ) : m_maxTrianglesPerNode(maxTrianglesPerNode) {
 }
 
 KDTree::~KDTree() {
 }
-
-void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode, IStatusCallback * pCallback ) {
+void KDTree::Build( const ISceneLoader * pLoader, IStatusCallback * pCallback ) {
 	m_Tree.clear();
 
-	wstring wFile = pModel->GetFilename();
+	wstring wFile = pLoader->GetFilename();
 	wFile += L".kdtree";
 
 	NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFile.c_str(), NanoCore::FS::efRead );
 	if( fp ) {
-		pCallback->SetStatus( "Loading cached KD-tree" );
+		if( pCallback ) pCallback->SetStatus( "Loading cached KD-tree" );
 
-		int numTris, numNodes;
+		int numTris, numNodes, mtpn;
 		fp->Read( &numTris, sizeof(numTris) );
 		fp->Read( &numNodes, sizeof(numNodes) );
-		fp->Read( &m_maxTrianglesPerNode, sizeof(m_maxTrianglesPerNode) );
+		fp->Read( &mtpn, sizeof(mtpn) );
 
-		if( m_maxTrianglesPerNode == maxTrianglesPerNode ) {
+		if( m_maxTrianglesPerNode == mtpn ) {
 			m_Triangles.resize( numTris );
 			m_Tree.resize( numNodes );
 			for( int i=0; i<numTris; ++i )
 				fp->Read( &m_Triangles[i], sizeof(Triangle) );
 			for( int i=0; i<numNodes; ++i )
 				fp->Read( &m_Tree[i], sizeof(Node) );
+
+			if( pCallback ) pCallback->SetStatus( NULL );
 			return;
 		}
 	}
 
-	if( pCallback )
-		pCallback->SetStatus( "Processing geometry for KD-tree" );
+	if( pCallback ) pCallback->SetStatus( "Processing geometry for KD-tree" );
 
-	const int numTris = pModel->GetNumTriangles();
+	const int numTris = pLoader->GetNumTriangles();
 
-	aabb bx;
+	AABB bx;
 	bx.reset();
 
 	m_Triangles.resize( numTris );
 	for( int i=0; i<numTris; ++i ) {
 		Triangle & t = m_Triangles[i];
-		const IObjectFileLoader::Triangle * p = pModel->GetTriangle( i );
-#ifdef KEEP_TRIANGLE_ID
-		t.triangleID = i;
-#endif
+		const ISceneLoader::Triangle * p = pLoader->GetTriangle( i );
 		t.mtl = p->material;
 
 		for( int j=0; j<3; ++j ) {
-			t.pos[j] = *pModel->GetVertexPos( p->pos[j] );
+			t.pos[j] = *pLoader->GetVertexPos( p->pos[j] );
 			bx += t.pos[j];
 		}
 		t.n = cross( t.pos[1] - t.pos[0], t.pos[2] - t.pos[0] );
@@ -67,10 +131,10 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode, IStatus
 		t.d = -dot( t.n, t.pos[0] );
 
 		for( int j=0; j<3; ++j ) {
-			const float2 * pUV = pModel->GetVertexUV( p->uv[j] );
+			const float2 * pUV = pLoader->GetVertexUV( p->uv[j] );
 			if( pUV ) t.uv[j] = *pUV;
 			if( p->normal[j] >= 0 ) {
-				const float3 * pNormal = pModel->GetVertexNormal( p->normal[j] );
+				const float3 * pNormal = pLoader->GetVertexNormal( p->normal[j] );
 				t.normal[j] = *pNormal;
 			} else {
 				t.normal[j] = t.n;
@@ -87,10 +151,8 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode, IStatus
 #endif
 	}
 
-	if( pCallback )
-		pCallback->SetStatus( "Building KD-tree" );
+	if( pCallback ) pCallback->SetStatus( "Building KD-tree" );
 
-	m_maxTrianglesPerNode = maxTrianglesPerNode;
 	BuildTree( 0, numTris );
 
 	if( NanoCore::WindowMain::MsgBox( L"Warning", L"Should we cache the KD-tree for faster loading?", true )) {
@@ -109,8 +171,7 @@ void KDTree::Build( IObjectFileLoader * pModel, int maxTrianglesPerNode, IStatus
 				fp->Write( &m_Tree[i], sizeof(Node) );
 		}
 	}
-	if( pCallback )
-		pCallback->SetStatus( NULL );
+	if( pCallback ) pCallback->SetStatus( NULL );
 }
 
 int KDTree::BuildTree( int l, int r ) {
@@ -190,17 +251,17 @@ int KDTree::BuildTree( int l, int r ) {
 
 int64 rays_traced = 0;
 
-void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
+void KDTree::Intersect_r( int node_index, Ray & ray, IntersectResult & result ) const {
 	const Node & node = m_Tree[node_index];
 
 #if 1
-
-	if( ray.pos.x < node.min.x || ray.pos.y < node.min.y || ray.pos.z < node.min.z ||
-		ray.pos.x > node.max.x || ray.pos.y > node.max.y || ray.pos.z > node.max.z )
+// if the ray origin is OUTSIDE the AABB, find its nearest corner, compute its three plane intersections and choose the furthest - see if it is inside the AABB
+	if( ray.origin.x < node.min.x || ray.origin.y < node.min.y || ray.origin.z < node.min.z ||
+		ray.origin.x > node.max.x || ray.origin.y > node.max.y || ray.origin.z > node.max.z )
 	{
 		float3 dir = ray.dir;
 		float3 bs( dir.x > 0 ? node.min.x : node.max.x, dir.y > 0 ? node.min.y : node.max.y, dir.z > 0 ? node.min.z : node.max.z );
-		float3 len = bs - ray.pos;
+		float3 len = bs - ray.origin;
 
 		for( int i=0; i<3; ++i )
 			len[i] = fabsf( dir[i] ) > 0.0001f ? len[i] / dir[i] : -10000.0f;
@@ -211,15 +272,15 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 
 		if( len[axis] <= 0 ) return;
 
-		float3 i = ray.pos + dir * len[axis];
+		float3 i = ray.origin + dir * len[axis];
 		switch( axis ) {
-			case 0: if( i.y < node.min.y || i.y > node.max.y || i.z < node.min.z || i.z > node.max.z ) return; break;
-			case 1: if( i.z < node.min.z || i.z > node.max.z || i.x < node.min.x || i.x > node.max.x ) return; break;
-			case 2: if( i.x < node.min.x || i.x > node.max.x || i.y < node.min.y || i.y > node.max.y ) return; break;
+			case 0: if( i.y < node.min.y || i.y > node.max.y || i.z < node.min.z || i.z > node.max.z ) return;
+			case 1: if( i.z < node.min.z || i.z > node.max.z || i.x < node.min.x || i.x > node.max.x ) return;
+			case 2: if( i.x < node.min.x || i.x > node.max.x || i.y < node.min.y || i.y > node.max.y ) return;
 		}
-
 		// already have a hit, that is closer compared to the box intersection
-		if( ray.tri && ray.hitlen < len[axis] ) return;
+		if( result.triangle && ray.hitlen < len[axis] )
+			return;
 	}
 #endif
 
@@ -230,7 +291,7 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 		//(px + t.vx)*A + (py + t.vy)*B + (pz + t.vz)*C = -D
 		//t = (-D - dot(p,N)) / dot(v,N)
 
-		float NdotPos = dot( t.n, ray.pos );
+		float NdotPos = dot( t.n, ray.origin );
 		float NdotDir = dot( t.n, ray.dir );
 
 		//if( NdotDir > -0.0001f ) continue;
@@ -239,7 +300,7 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 
 		if( k > ray.hitlen || k < 0 ) continue;
 
-		float3 hit = ray.pos + ray.dir * k;
+		float3 hit = ray.origin + ray.dir * k;
 
 #ifdef BARYCENTRIC_DATA_TRIANGLES
 		float3 v0 = t.v0;
@@ -271,44 +332,91 @@ void KDTree::Intersect_r( int node_index, RayInfo & ray ) {
 		if( u < -EPSILON || v < -EPSILON || u+v > 1+EPSILON ) continue;
 
 		if( k < ray.hitlen ) {
-			//ray.n = t.n;
-			ray.barycentric = float2( u, v );
-			ray.hit = hit;
 			ray.hitlen = k;
-			ray.tri = &t;
+			result.barycentric = float3( u, v, 1.0f - u - v );
+			result.hit = hit;
+			result.triangle = &t;
+			result.materialId = t.mtl;
+			result.n = t.n;
 		}
 	}
 	if( node.left )
-		Intersect_r( node.left, ray );
+		Intersect_r( node.left, ray, result );
 	if( node.right )
-		Intersect_r( node.right, ray );
+		Intersect_r( node.right, ray, result );
 }
 
-void KDTree::Intersect( RayInfo & ray ) {
-	ray.Clear();
-	if( !m_Tree.empty())
-		Intersect_r( 0, ray );
-	if( ray.tri )
-		ray.n = ray.tri->GetNormal( ray.barycentric );
+bool KDTree::IntersectRay( const Ray & ray, IntersectResult & result ) const {
+	if( m_Tree.empty()) return false;
+
+	Ray r(ray);
+	Intersect_r( 0, r, result );
+	return result.triangle != NULL;
 }
 
-void RayInfo::Init( int x, int y, const Camera & cam, int width, int height ) {
-	pos = cam.pos;
-	hitlen = 1000000000.f;
-	tri = 0;
-	float kx = (x*2.f/width - 1) * tanf( cam.fovy * 0.5f ) * float(width) / height;
-	float ky = (y*2.f/height - 1) * tanf( cam.fovy * 0.5f );
-	dir = normalize( cam.at + cam.right * kx + cam.up * ky );
-}
-
-bool KDTree::Empty() {
+bool KDTree::IsEmpty() const {
 	return m_Tree.empty();
 }
 
-aabb KDTree::GetBBox() {
-	if( !Empty() ) {
-		return aabb( m_Tree[0].min, m_Tree[0].max );
+AABB KDTree::GetAABB() const {
+	if( IsEmpty() )
+		return AABB( float3(0,0,0), float3(0,0,0) );
+	return AABB( m_Tree[0].min, m_Tree[0].max );
+}
+
+static void ComputeTangentBasis( const Triangle & tri, float3 & tangent, float3 & bitangent ) {
+
+	const float3 * pos = tri.pos;
+	const float2 * uv = tri.uv;
+
+//  pure geometric method - find a point with the same U-coordinate on the edge21 as the U0, this is tangent
+
+	float2 duv21 = uv[2] - uv[1];
+	float2 duv20 = uv[2] - uv[0];
+	float2 duv10 = uv[1] - uv[0];
+
+	float3 edge20 = pos[2] - pos[0];
+	float3 edge21 = pos[2] - pos[1];
+
+	float3 t,b;
+
+	if( duv21.x > -0.001f && duv21.x < 0.001f ) {
+		t = pos[0] + edge20 * duv10.x / duv20.x - pos[1];
+		if( duv10.y > 0 ) t = -t;
+		b = pos[1] + edge21 * -duv10.y / duv21.y - pos[0];
+		if( duv10.x > 0 ) b = -b;
 	} else {
-		return aabb( float3(0,0,0), float3(0,0,0));
+		t = pos[1] + edge21 * -duv10.x / duv21.x - pos[0];
+		if( duv10.y < 0 ) t = -t;
+		b = pos[0] + edge20 * duv10.y / duv20.y - pos[1];
+		if( duv10.x < 0 ) b = -b;
+	}
+	tangent = normalize( t );
+	bitangent = normalize( b );
+}
+
+void KDTree::InterpolateTriangleAttributes( IntersectResult & result, int flags ) {
+	if( !result.triangle )
+		return;
+
+	const Triangle * t = (const Triangle*)result.triangle;
+	if( flags & eUV ) {
+		result.uv = t->uv[0]*result.barycentric.x + t->uv[1]*result.barycentric.y + t->uv[2]*result.barycentric.z;
+	}
+	if( flags & (eNormal|eTangent) ) {
+		result.iNormal = normalize( t->normal[0]*result.barycentric.x + t->normal[1]*result.barycentric.y + t->normal[2]*result.barycentric.z );
+	}
+	if( flags & eTangent ) {
+		float3 T, B;
+		ComputeTangentBasis( *t, T, B );
+
+		float3 b = normalize( cross( result.iNormal, T ));
+		if( dot( B, b ) < 0.0f ) b = -b;
+
+		float3 t = normalize( cross( b, result.iNormal ));
+		if( dot( T, t ) < 0.0f ) t = -t;
+
+		result.tangent = t;
+		result.bitangent = b;
 	}
 }

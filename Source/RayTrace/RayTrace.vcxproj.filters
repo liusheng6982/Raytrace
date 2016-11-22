@@ -1,19 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="KDTree.cpp" />
     <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="RayTracer.cpp" />
+    <ClCompile Include="ShaderPreview.cpp" />
+    <ClCompile Include="ShaderPhoto.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
-    <ClInclude Include="ObjectFileLoader.h" />
-    <ClInclude Include="KDTree.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="RayTracer.h" />
+    <ClInclude Include="ShaderPreview.h" />
+    <ClInclude Include="ShaderPhoto.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Plan.txt" />

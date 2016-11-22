@@ -62,6 +62,9 @@ struct float3
 	void operator += ( float3 v ) {
 		x += v.x; y += v.y; z += v.z;
 	}
+	void operator -= ( float3 v ) {
+		x -= v.x; y -= v.y; z -= v.z;
+	}
 	void operator += ( float k ) {
 		x += k; y += k; z += k;
 	}
@@ -108,11 +111,15 @@ struct float3
 	}
 };
 
-struct aabb {
+struct float4 {
+	float x,y,z,w;
+};
+
+struct AABB {
 	float3 min, max;
 
-	aabb() {}
-	aabb( float3 min, float3 max ) : min(min), max(max) {}
+	AABB() {}
+	AABB( float3 min, float3 max ) : min(min), max(max) {}
 
 	void reset() {
 		min = float3(1000000.0f,1000000.0f,1000000.0f);

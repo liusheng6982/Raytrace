@@ -1,13 +1,6 @@
 #include "Camera.h"
 #include <NanoCore/Serialize.h>
 
-/*void Camera::GetAxes( float3 & _at, float3 & _up, float3 & _right )
-{
-	_right = right * (ncTan( fovy * 3.1415f / 180.0f / 2 ) * width / height);
-	_up = up * ncTan( fovy * 3.1415f / 180.0f / 2 );
-	_at = at;
-}*/
-
 void Camera::Orthonormalize() {
 	at = normalize( at ); // z
 	right = normalize( cross( up, at ));  // x
@@ -34,6 +27,14 @@ void Camera::Rotate( float pitch, float yaw ) {
 	at = m * at;
 	right = m * right;
 	up = m * up;
+}
+
+float3 Camera::ConstructRay( int x, int y, int width, int height ) {
+	float angle = DEG2RAD(fovy) * 0.5f;
+	float tan = ncTan( angle );
+	float kx = (x*2.f/width - 1) * tan * float(width) / height;
+	float ky = (y*2.f/height - 1) * tan;
+	return normalize( at + right * kx + up * ky );
 }
 
 void Serialize( float3 & f, NanoCore::XmlNode * node ) {

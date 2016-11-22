@@ -4,15 +4,24 @@
 #include <NanoCore/File.h>
 #include <NanoCore/Threads.h>
 #include <NanoCore/Windows.h>
-#include "ObjectFileLoader.h"
+#include "Common.h"
 
-#define BUCKET_SIZE 1024
+
+
+
+#define BUCKET_SIZE_SHIFT 12
+
+
+
+#define BUCKET_SIZE (1 << BUCKET_SIZE_SHIFT)
+#define BUCKET_DIV(i) ((i)>>BUCKET_SIZE_SHIFT)
+#define BUCKET_MOD(i) ((i)&(BUCKET_SIZE-1))
 
 using namespace std;
 
 #pragma warning( disable : 4996 )
 
-class ObjectFileLoader : public IObjectFileLoader {
+class ObjectFileLoader : public ISceneLoader {
 public:
 	ObjectFileLoader() : m_TriangleCount(0), m_PositionCount(0), m_UVCount(0) {}
 	virtual ~ObjectFileLoader() {
@@ -21,31 +30,30 @@ public:
 		EraseContainer( m_Triangles );
 	}
 
+	virtual bool Load( const wchar_t * pwFilename, IStatusCallback * pCallback );
+
 	virtual const wchar_t * GetFilename() const {
 		return m_wFilename.c_str();
 	}
-
-	virtual bool Load( const wchar_t * pwFilename, IStatusCallback * pCallback );
-
-	virtual const float3 * GetVertexPos( int i ) {
-		return (i >= 0 && i < m_PositionCount) ? &m_Positions[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+	virtual const float3 * GetVertexPos( int i ) const {
+		return (i >= 0 && i < m_PositionCount) ? &m_Positions[BUCKET_DIV(i)][BUCKET_MOD(i)] : NULL;
 	}
-	virtual const float2 * GetVertexUV( int i ) {
-		return (i >= 0 && i < m_UVCount) ? &m_UVs[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+	virtual const float2 * GetVertexUV( int i ) const {
+		return (i >= 0 && i < m_UVCount) ? &m_UVs[BUCKET_DIV(i)][BUCKET_MOD(i)] : NULL;
 	}
-	virtual const float3 * GetVertexNormal( int i ) {
-		return (i >= 0 && i < m_NormalCount) ? &m_Normals[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+	virtual const float3 * GetVertexNormal( int i ) const {
+		return (i >= 0 && i < m_NormalCount) ? &m_Normals[BUCKET_DIV(i)][BUCKET_MOD(i)] : NULL;
 	}
-	virtual const Triangle * GetTriangle( int i ) {
-		return (i >= 0 && i < m_TriangleCount) ? &m_Triangles[i/BUCKET_SIZE][i%BUCKET_SIZE] : NULL;
+	virtual const Triangle * GetTriangle( int i ) const {
+		return (i >= 0 && i < m_TriangleCount) ? &m_Triangles[BUCKET_DIV(i)][BUCKET_MOD(i)] : NULL;
 	}
-	virtual int GetNumTriangles() {
+	virtual int GetNumTriangles() const {
 		return m_TriangleCount;
 	}
-	virtual const Material * GetMaterial( int i ) {
+	virtual const Material * GetMaterial( int i ) const {
 		return &m_Materials[i];
 	}
-	virtual int GetNumMaterials() {
+	virtual int GetNumMaterials() const {
 		return (int)m_Materials.size();
 	}
 
@@ -205,14 +213,14 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename, IStatusCallback * pCall
 	NanoCore::TextFile tf( fp );
 
 	int materialID = 0, lineNum = 0;
-	aabb box;
+	AABB box;
 
 	char line[1024];
 	while( !tf.EndOfFile()) {
 		tf.ReadLine( line, 1024 );
 		lineNum++;
 
-		if( lineNum % 64 == 0 && pCallback )
+		if( lineNum % 256 == 0 && pCallback )
 			pCallback->ShowLoadingProgress( "Parsing model (%d %%)", fp );
 
 		switch( line[0] ) {
@@ -352,11 +360,11 @@ void ObjectFileLoader::Save( const wchar_t * pwFilename, IStatusCallback * pCall
 		pCallback->SetStatus( NULL );
 }
 
-IObjectFileLoader * IObjectFileLoader::Create() {
+ISceneLoader * CreateObjLoader() {
 	return new ObjectFileLoader();
 }
 
-IObjectFileLoader::Material::Material() {
+ISceneLoader::Material::Material() {
 	Ns = 0.0f;
 	Transparency = 0.0f;
 	Ka = float3(0,0,0);

@@ -17,6 +17,8 @@ public:
 	void GetAxes( float3 & _at, float3 & _up, float3 & _right );
 	void Rotate( float pitch, float yaw );
 
+	float3 ConstructRay( int x, int y, int width, int height );
+
 	void Serialize( NanoCore::XmlNode * node );
 };
 

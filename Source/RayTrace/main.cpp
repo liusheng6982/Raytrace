@@ -4,28 +4,29 @@
 #include <NanoCore/File.h>
 #include <NanoCore/Serialize.h>
 #include <NanoCore/Image.h>
-#include "ObjectFileLoader.h"
-#include "KDTree.h"
 #include "RayTracer.h"
+#include "Common.h"
+#include "ShaderPreview.h"
+#include "ShaderPhoto.h"
 #include <memory>
 
 
 
 class LoadingThread : public NanoCore::Thread {
 public:
-	LoadingThread() : m_pTree(NULL), m_pLoader(NULL), m_pStatusCallback(NULL) {}
-	void Init( std::wstring wFile, KDTree * pTree, Raytracer * pRaytracer, IStatusCallback * pCallback ) {
+	LoadingThread() : m_pScene(NULL), m_pLoader(NULL), m_pStatusCallback(NULL) {}
+	void Init( std::wstring wFile, IScene * pScene, Raytracer * pRaytracer, IStatusCallback * pCallback ) {
 		m_wFile = wFile;
-		m_pTree = pTree;
+		m_pScene = pScene;
 		m_pLoader = NULL;
 		m_pRaytracer = pRaytracer;
 		m_pStatusCallback = pCallback;
 	}
 	virtual void Run( void* ) {
-		m_pLoader = IObjectFileLoader::Create();
+		m_pLoader = CreateObjLoader();
 		m_pLoader->Load( m_wFile.c_str(), m_pStatusCallback );
-		m_pTree->Build( m_pLoader, 8, m_pStatusCallback );
-		m_pRaytracer->LoadMaterials( *m_pLoader, m_pStatusCallback );
+		m_pScene->Build( m_pLoader, m_pStatusCallback );
+		m_pRaytracer->LoadMaterials( m_pLoader, m_pStatusCallback );
 		OnTerminate();
 	}
 	virtual void OnTerminate() {
@@ -37,8 +38,8 @@ public:
 
 private:
 	std::wstring m_wFile;
-	KDTree * m_pTree;
-	IObjectFileLoader * m_pLoader;
+	IScene * m_pScene;
+	ISceneLoader * m_pLoader;
 	Raytracer * m_pRaytracer;
 	IStatusCallback * m_pStatusCallback;
 };
@@ -50,6 +51,8 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 	const static int IDC_FILE_EXIT = 1003;
 	const static int IDC_VIEW_CENTER_CAMERA = 1100;
 	const static int IDC_VIEW_CAPTURE_CURRENT_CAMERA = 1101;
+
+	const static int IDC_VIEW_PREVIEWMODE_FIRST = 1200;
 	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBE = 1200;
 	const static int IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED = 1201;
 	const static int IDC_VIEW_PREVIEWMODE_TRIANGLEID = 1202;
@@ -149,14 +152,14 @@ public:
 
 		m_OptionItems.push_back( OptionItem( "Preview resolution", m_PreviewResolution ));
 		m_OptionItems.push_back( OptionItem( "Raytrace threads", m_Raytracer.m_NumThreads ));
-		m_OptionItems.push_back( OptionItem( "GI bounces", m_PreviewRenderingContext.GIBounces ));
-		m_OptionItems.push_back( OptionItem( "GI samples", m_PreviewRenderingContext.GISamples ));
-		m_OptionItems.push_back( OptionItem( "Sun samples", m_PreviewRenderingContext.SunSamples ));
-		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_PreviewRenderingContext.SunDiskAngle ));
-		m_OptionItems.push_back( OptionItem( "Sun angle 1", m_PreviewRenderingContext.SunAngle1 ));
-		m_OptionItems.push_back( OptionItem( "Sun angle 2", m_PreviewRenderingContext.SunAngle2 ));
-		m_OptionItems.push_back( OptionItem( "Sun strength", m_PreviewRenderingContext.SunStrength ));
-		m_OptionItems.push_back( OptionItem( "Sky strength", m_PreviewRenderingContext.SkyStrength ));
+		m_OptionItems.push_back( OptionItem( "GI bounces", m_Environment.GIBounces ));
+		m_OptionItems.push_back( OptionItem( "GI samples", m_Environment.GISamples ));
+		m_OptionItems.push_back( OptionItem( "Sun samples", m_Environment.SunSamples ));
+		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_Environment.SunDiskAngle ));
+		m_OptionItems.push_back( OptionItem( "Sun angle 1", m_Environment.SunAngle1 ));
+		m_OptionItems.push_back( OptionItem( "Sun angle 2", m_Environment.SunAngle2 ));
+		m_OptionItems.push_back( OptionItem( "Sun strength", m_Environment.SunStrength ));
+		m_OptionItems.push_back( OptionItem( "Sky strength", m_Environment.SkyStrength ));
 
 		m_UpdateMs = 20;
 		m_bCtrlKey = false;
@@ -168,14 +171,14 @@ public:
 	virtual void OnKey( int key, bool bDown ) {
 		switch( key ) {
 			case 32:
-				if( m_KDTree.Empty()) {
+				if( m_pScene->IsEmpty()) {
 					m_State = STATE_LOADING;
 					LoadModel();
 				} else {
 					if( m_State == STATE_PREVIEW && bDown ) {
 						m_State = STATE_RENDERING;
 						m_Image.Init( GetWidth(), GetHeight(), 24 );
-						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
+						m_Raytracer.Render( m_Camera, m_Image, m_pScene, m_Environment, &m_ShaderPreview, this );
 						m_strBottomHelpLine = "Press Esc to cancel the rendering";
 					}
 				}
@@ -184,9 +187,7 @@ public:
 				if( m_State == STATE_PREVIEW && bDown ) {
 					m_State = STATE_RENDERING;
 					m_Image.Init( GetWidth(), GetHeight(), 24 );
-					Raytracer::Context context = m_PreviewRenderingContext;
-					context.Shading = Raytracer::eShading_Photo;
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, context, this );
+					m_Raytracer.Render( m_Camera, m_Image, m_pScene, m_Environment, &m_ShaderPhoto, this );
 					m_strBottomHelpLine = "Press Esc to cancel the rendering";
 				}
 				break;
@@ -209,7 +210,7 @@ public:
 			return;
 
 		if( wheel ) {
-			float step = len( m_KDTree.GetBBox().GetSize() ) / (m_bCtrlKey ? 60.0f : 30.0f);
+			float step = len( m_pScene->GetAABB().GetSize() ) / (m_bCtrlKey ? 60.0f : 30.0f);
 			m_Camera.pos += (wheel>0 ? m_Camera.at : -m_Camera.at) * step;
 			m_bInvalidate = true;
 		}
@@ -229,7 +230,7 @@ public:
 		}
 		if( bDrag ) {
 			m_Camera = dragCam;
-			m_Camera.Rotate( (y - dragY) * 3.1415f / 200.0f, (x - dragX) * 3.1415f / 200.0f );
+			m_Camera.Rotate( DEG2RAD(y - dragY) * 0.5f, DEG2RAD(x - dragX) * 0.5f );
 			m_bInvalidate = true;
 		}
 		if( btn_down & 2 ) {
@@ -295,7 +296,7 @@ public:
 					if( m_Image.GetWidth() != m_PreviewResolution ) {
 						m_Image.Init( m_PreviewResolution, m_PreviewResolution * GetHeight() / GetWidth(), 24 );
 					}
-					m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
+					m_Raytracer.Render( m_Camera, m_Image, m_pScene, m_Environment, &m_ShaderPreview, this );
 					m_bInvalidate = false;
 				}
 				Redraw();
@@ -307,7 +308,7 @@ public:
 				} else {
 					if( m_bInvalidate ) {
 						m_bInvalidate = false;
-						m_Raytracer.Render( m_Camera, m_Image, m_KDTree, m_PreviewRenderingContext, this );
+						m_Raytracer.Render( m_Camera, m_Image, m_pScene, m_Environment, &m_ShaderPhoto, this );
 					} else {
 						m_State = STATE_PREVIEW;
 						m_UpdateMs = 20;
@@ -372,31 +373,13 @@ public:
 				break;
 			}
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_ColoredCube;
-				m_bInvalidate = true;
-				break;
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_ColoredCubeShadowed;
-				m_bInvalidate = true;
-				break;
 			case IDC_VIEW_PREVIEWMODE_TRIANGLEID:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_TriangleID;
-				m_bInvalidate = true;
-				break;
 			case IDC_VIEW_PREVIEWMODE_CHECKER:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_Checker;
-				m_bInvalidate = true;
-				break;
 			case IDC_VIEW_PREVIEWMODE_DIFFUSE:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_Diffuse;
-				m_bInvalidate = true;
-				break;
 			case IDC_VIEW_PREVIEWMODE_SPECULAR:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_Specular;
-				m_bInvalidate = true;
-				break;
 			case IDC_VIEW_PREVIEWMODE_BUMP:
-				m_PreviewRenderingContext.Shading = Raytracer::eShading_Bump;
+				m_ShaderPreview.m_Shader = ShaderPreview::EShader( ShaderPreview::eFirst + (id - IDC_VIEW_PREVIEWMODE_FIRST) );
 				m_bInvalidate = true;
 				break;
 			default:
@@ -408,20 +391,15 @@ public:
 		}
 	}
 	void RightClick( int x, int y ) {
-		RayInfo ri;
-		ri.Init( x, GetHeight() - y, m_Camera, GetWidth(), GetHeight() );
-		m_KDTree.Intersect( ri );
-
 		m_Raytracer.m_DebugX = x;
 		m_Raytracer.m_DebugY = y;
 
-		if( ri.tri ) {
-#ifdef KEEP_TRIANGLE_ID
-			NanoCore::DebugOutput( "Picked triangleID: %d\n", ri.tri->triangleID );
-			m_Raytracer.m_SelectedTriangle = ri.tri->triangleID;
-#endif
+		float3 dir = m_Camera.ConstructRay( x, y, GetWidth(), GetHeight() );
+
+		IntersectResult result;
+		if( m_pScene->IntersectRay( Ray( m_Camera.pos, dir ), result ) ) {
 			char pc[128];
-			sprintf( pc, "Picked material '%s' (%d) at distance %0.3f", m_Raytracer.m_Materials[ri.tri->mtl].name.c_str(), ri.tri->mtl, ri.hitlen );
+			sprintf( pc, "Picked material '%s' (%d)", m_Raytracer.m_Materials[result.materialId].name.c_str(), result.materialId );
 			NanoCore::DebugOutput( pc );
 			m_strBottomHelpLine = pc;
 		} else {
@@ -477,7 +455,7 @@ public:
 		std::wstring wFolder = NanoCore::GetExecutableFolder();
 		std::wstring wFile = ChooseFile( wFolder.c_str(), L"Wavefront object files (*.obj)\0*.obj\0", L"Load model", true );
 		if( !wFile.empty()) {
-			m_LoadingThread.Init( wFile, &m_KDTree, &m_Raytracer, this );
+			m_LoadingThread.Init( wFile, m_pScene, &m_Raytracer, this );
 			m_LoadingThread.Start( NULL );
 
 			m_wFile = wFile;
@@ -522,15 +500,15 @@ public:
 		}
 	}
 	void CenterCamera() {
-		if( m_KDTree.Empty())
+		if( m_pScene->IsEmpty())
 			return;
 
-		aabb box = m_KDTree.GetBBox();
+		AABB box = m_pScene->GetAABB();
 
 		float3 center = (box.min + box.max) * 0.5f;
 		float L = len( box.min - center );
 
-		m_Camera.fovy = 60.0f * 3.1415f / 180.0f;
+		m_Camera.fovy = 60.0f;
 		m_Camera.world_up = float3(0,1,0);
 		m_Camera.LookAt( center, float3(1,-1,-1)*L );
 		m_bInvalidate = true;
@@ -540,7 +518,7 @@ public:
 	std::string     m_sFilename;
 	std::string     m_strStatus, m_strBottomHelpLine;
 	LoadingThread   m_LoadingThread;
-	KDTree          m_KDTree;
+	IScene*         m_pScene;
 	NanoCore::Image m_Image, m_LowresImage;
 	Camera          m_Camera;
 	Raytracer       m_Raytracer;
@@ -548,14 +526,15 @@ public:
 	EState          m_State;
 	int             m_CamerasMenu;
 	std::vector<Camera> m_Cameras;
-	Raytracer::EShading m_PreviewShading;
 	int             m_PreviewResolution;
 	std::auto_ptr<OptionsWnd> m_OptionsWnd;
 	int             m_UpdateMs;
 	bool            m_bCtrlKey;
-	Raytracer::Context m_PreviewRenderingContext;
-	uint32 m_MainThreadId;
+	Environment     m_Environment;
+	uint32          m_MainThreadId;
 	NanoCore::CriticalSection m_csStatus;
+	ShaderPreview   m_ShaderPreview;
+	ShaderPhoto     m_ShaderPhoto;
 };
 
 

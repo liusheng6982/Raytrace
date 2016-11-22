@@ -22,6 +22,7 @@ public:
 	void BilinearFilterRect( int x, int y, int w, int h );
 
 	void Average( const Image & img );
+	void Stretch( const Image & img );
 
 	int GetWidth() const { return m_width; }
 	int GetHeight() const { return m_height; }

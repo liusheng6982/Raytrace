@@ -181,15 +181,17 @@
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="ObjectFileLoader.cpp" />
     <ClCompile Include="KDTree.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="RayTracer.cpp" />
+    <ClCompile Include="ShaderPhoto.cpp" />
+    <ClCompile Include="ShaderPreview.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Common.h" />
-    <ClInclude Include="KDTree.h" />
-    <ClInclude Include="ObjectFileLoader.h" />
     <ClInclude Include="RayTracer.h" />
+    <ClInclude Include="ShaderPhoto.h" />
+    <ClInclude Include="ShaderPreview.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Plan.txt" />
