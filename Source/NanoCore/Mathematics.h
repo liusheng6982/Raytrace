@@ -56,7 +56,7 @@ struct float3
 	float3( float _x, float _y, float _z ) { x = _x; y = _y; z = _z; }
 	float3( const float3 & f3 ) { x = f3.x; y = f3.y; z = f3.z; }
 
-	float & operator[] ( int i ) { return v[i]; }
+	//float & operator[] ( int i ) { return v[i]; }
 	float operator[]( int i ) const { return v[i]; }
 
 	void operator += ( float3 v ) {

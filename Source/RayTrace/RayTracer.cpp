@@ -11,18 +11,6 @@
 //#define JobsLog NanoCore::DebugOutput
 #define JobsLog
 
-static float randf() {
-	return rand() / 32767.f;
-}
-
-static float randf( float a, float b ) {
-	return a + randf()*(b - a);
-}
-
-static float3 randUnitSphere() {
-	float3 v( randf(-1.f, 1.f), randf(-1.f,1.f), randf(-1.f,1.f));
-	return normalize( v );
-}
 
 static void ComputeProgressiveDistribution( int size, std::vector<int> & order ) {
 	for( int i=0; i<size*size; order.push_back( i++ ));
@@ -37,20 +25,26 @@ bool Raytracer::TraceRay( Ray & V, IntersectResult & result ) {
 	for( ;; ) {
 		m_pScene->IntersectRay( V, result );
 		if( !result.triangle || m_Materials.empty())
-			break;
+			return false;
 
-		const Texture & tex = m_Materials[result.materialId].alpha;
-		if( !tex.IsEmpty() ) {
+		return true;
+
+		const Texture::Ptr & tex = m_Materials[result.materialId].pAlphaMap;
+		if( tex ) {
+			m_pScene->InterpolateTriangleAttributes( result, IntersectResult::eUV );
+
 			int pix[4];
-			tex.GetTexel( result.uv, pix );
+			tex->GetTexel( result.GetUV(), pix );
 
-			int alpha = (tex.mips[0]->GetBpp() == 32) ? pix[3] : pix[0];
+			int alpha = (tex->mips[0]->GetBpp() == 32) ? pix[3] : pix[0];
 			if( !alpha ) {
-				V.origin = result.hit + V.dir * 0.001f;
-				if( V.hitlen < INFINITE_HITLEN )
+				/*if( V.hitlen < INFINITE_HITLEN )
 					V.hitlen -= len( V.origin - result.hit );
-				else
+				else*/
 					V.hitlen = INFINITE_HITLEN;
+
+				V.origin = result.hit + V.dir * 0.001f;
+				result.triangle = NULL;
 			} else
 				break;
 		} else
@@ -60,9 +54,8 @@ bool Raytracer::TraceRay( Ray & V, IntersectResult & result ) {
 		result.hit -= result.n * 0.001f;
 	else
 		result.hit += result.n * 0.001f;
-	if( result.triangle ) {
-		result.material = &m_Materials[result.materialId];
-	}
+	result.material = &m_Materials[result.materialId];
+	return true;
 }
 
 static void Tonemap( const float3 & hdrColor, int * ldrColor ) {
@@ -76,7 +69,7 @@ static void Tonemap( const float3 & hdrColor, int * ldrColor ) {
 float3 Raytracer::RenderRay( Ray & V, IShader * pShader, void * context ) {
 	IntersectResult hit;
 	TraceRay( V, hit );
-	return pShader->Shade( V, hit , *m_pEnv, this );
+	return pShader->Shade( V, hit , *m_pEnv, this, context );
 }
 
 void Raytracer::RaytracePixel( int x, int y, int * pixel )
@@ -199,6 +192,8 @@ void Raytracer::Render( Camera & camera, NanoCore::Image & image, IScene * pScen
 	m_pEnv = &env;
 	m_pShader = pShader;
 
+	pShader->BeginShading( env );
+
 	int tileSize = 1 << m_ScreenTileSizePow2;
 
 	m_pImage->Fill( 0 );
@@ -223,7 +218,7 @@ bool Raytracer::IsRendering() {
 	return NanoCore::JobManager::IsRunning();
 }
 
-NanoCore::Image::Ptr Raytracer::LoadImage( std::wstring path, std::string file ) {
+Texture::Ptr Raytracer::LoadTexture( std::wstring path, std::string file ) {
 	if( file.empty())
 		return NULL;
 
@@ -235,10 +230,12 @@ NanoCore::Image::Ptr Raytracer::LoadImage( std::wstring path, std::string file )
 
 	NanoCore::Image::Ptr pImage( new NanoCore::Image() );
 	if( pImage->Load( path.c_str()) ) {
-		m_TextureMaps[path] = pImage;
+		Texture::Ptr pTexture( new Texture() );
+		pTexture->Init( pImage );
+		m_TextureMaps[path] = pTexture;
 		m_ImageCountLoaded++;
 		m_ImageSizeLoaded += pImage->GetSize();
-		return pImage;
+		return pTexture;
 	}
 	NanoCore::DebugOutput( "Warning: FAILED to load image '%ls'\n", path.c_str());
 	return NULL;
@@ -266,13 +263,13 @@ void Raytracer::LoadMaterials( ISceneLoader * pLoader, IStatusCallback * pCallba
 		if( pCallback )
 			pCallback->SetStatus( "Loading images (%d %%)", i*100 / num );
 
-		dst.diffuse.Init( LoadImage( path, src->mapKd ));
-		dst.specular.Init( LoadImage( path, src->mapKs ));
-		dst.bump.Init( LoadImage( path, src->mapBump ));
-		dst.alpha.Init( LoadImage( path, src->mapAlpha ));
-		dst.roughness.Init( LoadImage( path, src->mapNs ));
-		if( dst.alpha.IsEmpty() && !dst.diffuse.IsEmpty() && dst.diffuse.mips[0]->GetBpp() == 32 )
-			dst.alpha.Init( dst.diffuse.mips[0] );
+		dst.pDiffuseMap = LoadTexture( path, src->mapKd );
+		dst.pSpecularMap = LoadTexture( path, src->mapKs );
+		dst.pBumpMap = LoadTexture( path, src->mapBump );
+		dst.pAlphaMap = LoadTexture( path, src->mapAlpha );
+		dst.pRoughnessMap = LoadTexture( path, src->mapNs );
+		if( !dst.pAlphaMap && dst.pDiffuseMap && dst.pDiffuseMap->mips[0]->GetBpp() == 32 )
+			dst.pAlphaMap = dst.pDiffuseMap;
 	}
 	NanoCore::DebugOutput( "%d materials loaded\n", num );
 	NanoCore::DebugOutput( "%d images loaded (%d Mb)\n", m_ImageCountLoaded, m_ImageSizeLoaded / (1024*1024) );

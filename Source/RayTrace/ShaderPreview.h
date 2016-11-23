@@ -22,7 +22,7 @@ public:
 	ShaderPreview();
 
 	virtual void   BeginShading( const Environment & env );
-	virtual float3 Shade( Ray & V, IntersectResult & hit, const Environment & env, IRaytracer * pRaytracer );
+	virtual float3 Shade( Ray & V, IntersectResult & hit, const Environment & env, IRaytracer * pRaytracer, void * context );
 	virtual void*  CreateContext() { return NULL; }
 
 private:

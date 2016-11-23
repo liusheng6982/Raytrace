@@ -6,13 +6,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "3rdparty/stb/stb_image.h"
 
-#pragma optimize( "", off )
+
 
 namespace NanoCore {
 
 Image::Image() : m_pBuffer(NULL), m_width(0), m_height(0), m_bpp(0) {}
 
-Image::Image( int w, int h, int bpp ) {
+Image::Image( int w, int h, int bpp ) : m_pBuffer(NULL) {
 	Init( w, h, bpp );
 }
 
@@ -247,11 +247,11 @@ void Image::Stretch( const Image & img ) {
 					}
 				}
 			}
-			int div = (x1-x1)*(y2-y1);
+			int div = (x2-x1)*(y2-y1);
 			pix[0] /= div;
 			pix[1] /= div;
 			pix[2] /= div;
-			pix[4] /= div;
+			pix[3] /= div;
 			SetPixel( x, y, pix );
 		}
 	}

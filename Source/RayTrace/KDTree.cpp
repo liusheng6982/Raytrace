@@ -6,8 +6,8 @@
 
 using namespace std;
 
-#define EPSILON 0.000001
-#define BARYCENTRIC_DATA_TRIANGLES
+#define EPSILON 0.00001f
+//#define BARYCENTRIC_DATA_TRIANGLES
 //#define KEEP_TRIANGLE_ID
 
 
@@ -61,7 +61,7 @@ public:
 	virtual bool IntersectRay( const Ray & ray, IntersectResult & hit ) const;
 	virtual bool IsEmpty() const;
 	virtual AABB GetAABB() const;
-	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags );
+	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags ) const;
 
 private:
 	int  BuildTree( int l, int r );
@@ -254,96 +254,131 @@ int64 rays_traced = 0;
 void KDTree::Intersect_r( int node_index, Ray & ray, IntersectResult & result ) const {
 	const Node & node = m_Tree[node_index];
 
+	float3 origin = ray.origin;
+	float3 dir = ray.dir;
+	float hitlen = ray.hitlen;
+
 #if 1
 // if the ray origin is OUTSIDE the AABB, find its nearest corner, compute its three plane intersections and choose the furthest - see if it is inside the AABB
-	if( ray.origin.x < node.min.x || ray.origin.y < node.min.y || ray.origin.z < node.min.z ||
-		ray.origin.x > node.max.x || ray.origin.y > node.max.y || ray.origin.z > node.max.z )
+	if( origin.x < node.min.x || origin.y < node.min.y || origin.z < node.min.z ||
+		origin.x > node.max.x || origin.y > node.max.y || origin.z > node.max.z )
 	{
-		float3 dir = ray.dir;
 		float3 bs( dir.x > 0 ? node.min.x : node.max.x, dir.y > 0 ? node.min.y : node.max.y, dir.z > 0 ? node.min.z : node.max.z );
-		float3 len = bs - ray.origin;
+		float3 len = bs - origin;
 
-		for( int i=0; i<3; ++i )
-			len[i] = fabsf( dir[i] ) > 0.0001f ? len[i] / dir[i] : -10000.0f;
+		int axis = -1;
+		float max_k = 0.0f;
 
-		int axis = 0;
-		if( len.y > len.x ) axis = 1;
-		if( len.z > len[axis] ) axis = 2;
+		for( int i=0; i<3; ++i ) {
+			if( dir[i] > -EPSILON && dir[i] < EPSILON ) continue;
 
-		if( len[axis] <= 0 ) return;
-
-		float3 i = ray.origin + dir * len[axis];
-		switch( axis ) {
-			case 0: if( i.y < node.min.y || i.y > node.max.y || i.z < node.min.z || i.z > node.max.z ) return;
-			case 1: if( i.z < node.min.z || i.z > node.max.z || i.x < node.min.x || i.x > node.max.x ) return;
-			case 2: if( i.x < node.min.x || i.x > node.max.x || i.y < node.min.y || i.y > node.max.y ) return;
+			float k = len[i] / dir[i];
+			if( k > max_k ) {
+				max_k = k;
+				axis = i;
+			}
 		}
 		// already have a hit, that is closer compared to the box intersection
-		if( result.triangle && ray.hitlen < len[axis] )
-			return;
+		if( axis == -1 || hitlen < max_k ) return;
+
+		float3 i = origin + dir * max_k;
+		switch( axis ) {
+			case 0: if( i.y < node.min.y || i.y > node.max.y || i.z < node.min.z || i.z > node.max.z ) return; break;
+			case 1: if( i.z < node.min.z || i.z > node.max.z || i.x < node.min.x || i.x > node.max.x ) return; break;
+			case 2: if( i.x < node.min.x || i.x > node.max.x || i.y < node.min.y || i.y > node.max.y ) return; break;
+		}
 	}
 #endif
 
 	const int count = node.numTriangles;
-	const Triangle * ptr = &m_Triangles[0] + node.startTriangle;
-	for( int i=0; i<count; ++i ) {
-		const Triangle & t = ptr[i];
-		//(px + t.vx)*A + (py + t.vy)*B + (pz + t.vz)*C = -D
-		//t = (-D - dot(p,N)) / dot(v,N)
+	if( count ) {
 
-		float NdotPos = dot( t.n, ray.origin );
-		float NdotDir = dot( t.n, ray.dir );
+		const Triangle * best_triangle = NULL;
+		float3 best_bary, best_hit;
 
-		//if( NdotDir > -0.0001f ) continue;
+		const Triangle * ptr = &m_Triangles[0] + node.startTriangle;
+		for( int i=0; i<count; ++i ) {
+			const Triangle & t = ptr[i];
+			//(px + t.vx)*A + (py + t.vy)*B + (pz + t.vz)*C = -D
+			//t = (-D - dot(p,N)) / dot(v,N)
 
-		float k = (-t.d - NdotPos) / NdotDir;
+			float NdotPos = dot( t.n, origin );
+			float NdotDir = dot( t.n, dir );
 
-		if( k > ray.hitlen || k < 0 ) continue;
+			if( NdotDir > -0.0001f && NdotDir < 0.0001f ) continue;
 
-		float3 hit = ray.origin + ray.dir * k;
+			//if( NdotDir > -0.0001f ) continue;
 
-#ifdef BARYCENTRIC_DATA_TRIANGLES
-		float3 v0 = t.v0;
-		float3 v1 = t.v1;
-		float dot00 = t.dot00;
-		float dot01 = t.dot01;
-		float dot11 = t.dot11;
-		float invDenom = t.invDenom;
-#else
-		float3 v0 = t.pos[1] - t.pos[0];
-		float3 v1 = t.pos[2] - t.pos[0];
-		float dot00 = dot( v0, v0 );
-		float dot01 = dot( v0, v1 );
-		float dot11 = dot( v1, v1 );
-		float invDenom = 1.f / (dot00 * dot11 - dot01 * dot01);
-#endif
-		float3 v2 = hit - t.pos[0];
-		float dot02 = dot( v0, v2 );
-		float dot12 = dot( v1, v2 );
+			float k = (-t.d - NdotPos) / NdotDir;
 
-		// Compute barycentric coordinates
+			if( k > hitlen || k < 0 ) continue;
 
-		float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
-		float w = (dot00 * dot12 - dot01 * dot02) * invDenom;
-		float u = 1.0f - v - w;
+			float3 hit = origin + dir * k;
 
-		// Check if point is in triangle
+	#ifdef BARYCENTRIC_DATA_TRIANGLES
+			float3 v0 = t.v0;
+			float3 v1 = t.v1;
+			float dot00 = t.dot00;
+			float dot01 = t.dot01;
+			float dot11 = t.dot11;
+			float invDenom = t.invDenom;
+	#else
+			float3 v0 = t.pos[1] - t.pos[0];
+			float3 v1 = t.pos[2] - t.pos[0];
+			float dot00 = dot( v0, v0 );
+			float dot01 = dot( v0, v1 );
+			float dot11 = dot( v1, v1 );
+			float invDenom = 1.f / (dot00 * dot11 - dot01 * dot01);
+	#endif
+			float3 v2 = hit - t.pos[0];
+			float dot02 = dot( v0, v2 );
+			float dot12 = dot( v1, v2 );
 
-		if( u < -EPSILON || v < -EPSILON || u+v > 1+EPSILON ) continue;
+			// Compute barycentric coordinates
 
-		if( k < ray.hitlen ) {
-			ray.hitlen = k;
-			result.barycentric = float3( u, v, 1.0f - u - v );
-			result.hit = hit;
-			result.triangle = &t;
-			result.materialId = t.mtl;
-			result.n = t.n;
+			float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
+			float w = (dot00 * dot12 - dot01 * dot02) * invDenom;
+			float u = 1.0f - v - w;
+
+			// Check if point is in triangle
+
+			if( u < -EPSILON || v < -EPSILON || u+v > 1+EPSILON ) continue;
+
+			if( k < ray.hitlen ) {
+				hitlen = k;
+				best_triangle = &t;
+				best_hit = hit;
+				best_bary = float3( u, v, 1.0f - u - v );
+			}
+		}
+		if( best_triangle ) {
+			ray.hitlen = hitlen;
+			result.hit = best_hit;
+			result.barycentric = best_bary;
+			result.triangle = best_triangle;
+			result.materialId = best_triangle->mtl;
+			result.n = best_triangle->n;
 		}
 	}
+
+#if 1
+	int a, b;
+	float axis = (node.min[node.axis] + node.max[node.axis])*0.5f;
+	if( origin[node.axis] < axis )
+		a = node.left, b = node.right;
+	else
+		a = node.right, b = node.left;
+
+	if( a ) Intersect_r( a, ray, result );
+	if( b ) Intersect_r( b, ray, result );
+
+#else
 	if( node.left )
 		Intersect_r( node.left, ray, result );
 	if( node.right )
 		Intersect_r( node.right, ray, result );
+#endif
+
 }
 
 bool KDTree::IntersectRay( const Ray & ray, IntersectResult & result ) const {
@@ -395,28 +430,31 @@ static void ComputeTangentBasis( const Triangle & tri, float3 & tangent, float3 
 	bitangent = normalize( b );
 }
 
-void KDTree::InterpolateTriangleAttributes( IntersectResult & result, int flags ) {
+void KDTree::InterpolateTriangleAttributes( IntersectResult & result, int flags ) const {
 	if( !result.triangle )
 		return;
 
+	flags &= ~result.GetFlags();
+
 	const Triangle * t = (const Triangle*)result.triangle;
-	if( flags & eUV ) {
-		result.uv = t->uv[0]*result.barycentric.x + t->uv[1]*result.barycentric.y + t->uv[2]*result.barycentric.z;
+	if( flags & IntersectResult::eUV ) {
+		result.SetUV( t->uv[0]*result.barycentric.x + t->uv[1]*result.barycentric.y + t->uv[2]*result.barycentric.z );
 	}
-	if( flags & (eNormal|eTangent) ) {
-		result.iNormal = normalize( t->normal[0]*result.barycentric.x + t->normal[1]*result.barycentric.y + t->normal[2]*result.barycentric.z );
+	if( flags & (IntersectResult::eNormal|IntersectResult::eTangentSpace) ) {
+		result.SetInterpolatedNormal( normalize( t->normal[0]*result.barycentric.x + t->normal[1]*result.barycentric.y + t->normal[2]*result.barycentric.z ));
 	}
-	if( flags & eTangent ) {
+	if( flags & IntersectResult::eTangentSpace ) {
 		float3 T, B;
 		ComputeTangentBasis( *t, T, B );
 
-		float3 b = normalize( cross( result.iNormal, T ));
+		float3 n = result.GetInterpolatedNormal();
+
+		float3 b = normalize( cross( n, T ));
 		if( dot( B, b ) < 0.0f ) b = -b;
 
-		float3 t = normalize( cross( b, result.iNormal ));
+		float3 t = normalize( cross( b, n ));
 		if( dot( T, t ) < 0.0f ) t = -t;
 
-		result.tangent = t;
-		result.bitangent = b;
+		result.SetTangentSpace( t, b );
 	}
 }

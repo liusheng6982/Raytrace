@@ -6,11 +6,13 @@
 #include <NanoCore/File.h>
 #include <NanoCore/Image.h>
 
-#define INFINITE_HITLEN 10000000.0f
+#define INFINITE_HITLEN 100000.0f
 
 
 
 struct Texture {
+	typedef RefCountPtr<Texture> Ptr;
+
 	std::vector<NanoCore::Image::Ptr> mips;
 	int width, height;
 
@@ -26,7 +28,7 @@ struct Texture {
 
 struct Material {
 	std::string name;
-	Texture ambient, diffuse, specular, roughness, bump, alpha;
+	Texture::Ptr pAmbientMap, pDiffuseMap, pSpecularMap, pRoughnessMap, pBumpMap, pAlphaMap;
 	float3 Kd, Ks, Ke;
 	float Ns, opacity;
 
@@ -39,13 +41,44 @@ struct IntersectResult {
 	const void * triangle;
 	const Material * material;
 	int    materialId;
-	float3 hit, n;
+	float3 hit, n;  // triangle normal
 	float3 barycentric;
-	float3 iNormal;
-	float3 tangent, bitangent;
-	float2 uv;
+
+	enum {
+		eUV = 1,
+		eNormal = 2,
+		eTangentSpace = 4,
+	};
+
+	float2 GetUV() const {
+		assert( flags & eUV );
+		return uv;
+	}
+	float3 GetInterpolatedNormal() const {
+		assert( flags & eNormal );
+		return interpolatedNormal;
+	}
+	float3 GetTangent() const {
+		assert( flags & eTangentSpace );
+		return tangent;
+	}
+	float3 GetBitangent() const {
+		assert( flags & eTangentSpace );
+		return bitangent;
+	}
+	int  GetFlags() const { return flags; }
+
+	void SetUV( float2 uv );
+	void SetInterpolatedNormal( float3 n );
+	void SetTangentSpace( float3 t, float3 b );
 
 	IntersectResult();
+
+private:
+	float3 interpolatedNormal;  // interpolated normal
+	float3 tangent, bitangent;
+	float2 uv;
+	int flags;
 };
 
 
@@ -111,14 +144,7 @@ public:
 	virtual bool IntersectRay( const Ray & ray, IntersectResult & hit ) const = 0;
 	virtual bool IsEmpty() const = 0;
 	virtual AABB GetAABB() const = 0;
-
-	enum {
-		eBarycentric = 1,
-		eUV = 2,
-		eNormal = 4,
-		eTangent = 8
-	};
-	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags ) = 0;
+	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags ) const = 0;
 };
 
 
@@ -150,13 +176,14 @@ public:
 	virtual ~IRaytracer() {}
 	virtual bool   TraceRay( Ray & V, IntersectResult & result ) = 0;
 	virtual float3 RenderRay( Ray & V, IShader * pShader, void * context ) = 0;
+	virtual const IScene * GetScene() const = 0;
 };
 
 class IShader {
 public:
 	virtual ~IShader() {}
 	virtual void   BeginShading( const Environment & env ) = 0;
-	virtual float3 Shade( Ray & V, IntersectResult & result, const Environment & env, IRaytracer * pRaytracer ) = 0;
+	virtual float3 Shade( Ray & V, IntersectResult & result, const Environment & env, IRaytracer * pRaytracer, void * context ) = 0;
 	virtual void*  CreateContext() = 0;
 };
 

@@ -4,11 +4,11 @@
 #include <NanoCore/File.h>
 #include <NanoCore/Serialize.h>
 #include <NanoCore/Image.h>
-#include "RayTracer.h"
 #include "Common.h"
+#include "RayTracer.h"
 #include "ShaderPreview.h"
 #include "ShaderPhoto.h"
-#include <memory>
+
 
 
 
@@ -165,6 +165,8 @@ public:
 		m_bCtrlKey = false;
 		m_strBottomHelpLine = "Press Space to open file";
 		m_MainThreadId = NanoCore::GetCurrentThreadId();
+
+		m_pScene = CreateKDTree( 8 );
 	}
 	~MainWnd() {
 	}
@@ -394,16 +396,17 @@ public:
 		m_Raytracer.m_DebugX = x;
 		m_Raytracer.m_DebugY = y;
 
-		float3 dir = m_Camera.ConstructRay( x, y, GetWidth(), GetHeight() );
+		float3 dir = m_Camera.ConstructRay( x, GetHeight() - y, GetWidth(), GetHeight() );
 
 		IntersectResult result;
 		if( m_pScene->IntersectRay( Ray( m_Camera.pos, dir ), result ) ) {
 			char pc[128];
-			sprintf( pc, "Picked material '%s' (%d)", m_Raytracer.m_Materials[result.materialId].name.c_str(), result.materialId );
+			sprintf_s( pc, "Picked material '%s' (%d)", m_Raytracer.m_Materials[result.materialId].name.c_str(), result.materialId );
 			NanoCore::DebugOutput( pc );
 			m_strBottomHelpLine = pc;
 		} else {
 			m_Raytracer.m_SelectedTriangle = -1;
+			m_strBottomHelpLine = "Nothing there";
 		}
 		m_bInvalidate = true;
 	}
@@ -483,13 +486,13 @@ public:
 		const char * pcPlatform = (sizeof(void*) == 8) ? "Debug(64 bit)" : "Debug(32 bit)";
 #endif
 		char buf[256];
-		int len = sprintf( buf, "Raytracer | %s | https://github.com/sergeiam/ | %s", m_sFilename.c_str(), pcPlatform );
+		int len = sprintf_s( buf, "Raytracer | %s | https://github.com/sergeiam/ | %s", m_sFilename.c_str(), pcPlatform );
 		if( pcFormat ) {
-			strcat( buf, " | " );
+			strcat_s( buf, " | " );
 			len += 3;
 			va_list args;
 			va_start( args, pcFormat );
-			vsprintf( buf + len, pcFormat, args );
+			vsprintf_s( buf + len, sizeof(buf)-len, pcFormat, args );
 			va_end( args );
 		}
 		if( NanoCore::GetCurrentThreadId() == m_MainThreadId )

@@ -10,7 +10,7 @@ void ShaderPreview::BeginShading( const Environment & env ) {
 	m_SunDir = m2 * m1 * float3(0,0,-1);
 }
 
-float3 ShaderPreview::Shade( Ray & V, IntersectResult & result, const Environment & env, IRaytracer * pRaytracer ) {
+float3 ShaderPreview::Shade( Ray & V, IntersectResult & result, const Environment & env, IRaytracer * pRaytracer, void * context ) {
 
 	if( result.triangle == NULL )
 		return 0.0f;
@@ -24,7 +24,7 @@ float3 ShaderPreview::Shade( Ray & V, IntersectResult & result, const Environmen
 				shade = 0.2f;
 		}
 		case eColoredCube:
-			return float3( (result.n + 1.0f)*shade*0.5f );
+			return float3( (result.n + 1.001f)*shade*0.49f );
 		case eTriangleID: {
 			uint32 c = (uint32)result.triangle;
 			return float3( float(c&0xFF)/255.0f, float((c>>8)&0xFF)/255.0f, float((c>>16)&0xFF)/255.0f );
@@ -37,20 +37,23 @@ float3 ShaderPreview::Shade( Ray & V, IntersectResult & result, const Environmen
 			return float3( ((c&1) ? 1.0f : 0.2f)*shade );
 		}
 		case eDiffuse: {
-			if( result.material && !result.material->diffuse.IsEmpty() ) {
-				return result.material->diffuse.GetTexel( result.uv )* result.material->Kd;
+			if( result.material && result.material->pDiffuseMap ) {
+				pRaytracer->GetScene()->InterpolateTriangleAttributes( result, IntersectResult::eUV );
+				return result.material->pDiffuseMap->GetTexel( result.GetUV() )* result.material->Kd;
 			}
 			break;
 		}
 		case eSpecular: {
-			if( result.material && !result.material->specular.IsEmpty() ) {
-				return result.material->specular.GetTexel( result.uv );
+			if( result.material && result.material->pSpecularMap ) {
+				pRaytracer->GetScene()->InterpolateTriangleAttributes( result, IntersectResult::eUV );
+				return result.material->pSpecularMap->GetTexel( result.GetUV() );
 			}
 			break;
 		}
 		case eBump: {
-			if( result.material && !result.material->bump.IsEmpty() ) {
-				return result.material->bump.GetTexel( result.uv );
+			if( result.material && result.material->pBumpMap ) {
+				pRaytracer->GetScene()->InterpolateTriangleAttributes( result, IntersectResult::eUV );
+				return result.material->pBumpMap->GetTexel( result.GetUV() );
 			}
 			break;
 		}

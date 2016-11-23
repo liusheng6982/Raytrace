@@ -1,7 +1,27 @@
 #include "Common.h"
 
-IntersectResult::IntersectResult() : triangle(NULL), material(NULL) {
+
+
+IntersectResult::IntersectResult() : triangle(NULL), material(NULL), flags(0) {
 }
+
+void IntersectResult::SetUV( float2 _uv ) {
+	uv = _uv;
+	flags |= eUV;
+}
+
+void IntersectResult::SetInterpolatedNormal( float3 n ) {
+	interpolatedNormal = n;
+	flags |= eNormal;
+}
+
+void IntersectResult::SetTangentSpace( float3 t, float3 b ) {
+	tangent = t;
+	bitangent = b;
+	flags |= eTangentSpace;
+}
+
+
 
 Texture::Texture() : width(0), height(0) {}
 

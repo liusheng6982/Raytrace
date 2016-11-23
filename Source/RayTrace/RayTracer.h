@@ -22,6 +22,7 @@ public:
 
 	virtual bool   TraceRay( Ray & V, IntersectResult & result );
 	virtual float3 RenderRay( Ray & V, IShader * pShader, void * context );
+	virtual const IScene * GetScene() const { return m_pScene; }
 
 	void LoadMaterials( ISceneLoader * pLoader, IStatusCallback * pCallback );
 	void Render( Camera & camera, NanoCore::Image & image, IScene * pScene, const Environment & env, IShader * pShader, IStatusCallback * pCallback );
@@ -44,10 +45,10 @@ public:
 	IScene * m_pScene;
 
 	std::vector<Material> m_Materials;
-	std::map<std::wstring,NanoCore::Image::Ptr> m_TextureMaps;
+	std::map<std::wstring,Texture::Ptr> m_TextureMaps;
 
 private:
-	NanoCore::Image::Ptr LoadImage( std::wstring path, std::string file );
+	Texture::Ptr LoadTexture( std::wstring path, std::string file );
 
 	int m_ImageCountLoaded;
 	int m_ImageSizeLoaded;
