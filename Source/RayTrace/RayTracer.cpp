@@ -27,28 +27,28 @@ bool Raytracer::TraceRay( Ray & V, IntersectResult & result ) {
 		if( !result.triangle || m_Materials.empty())
 			return false;
 
-		return true;
+		//return true;
 
 		const Texture::Ptr & tex = m_Materials[result.materialId].pAlphaMap;
-		if( tex ) {
-			m_pScene->InterpolateTriangleAttributes( result, IntersectResult::eUV );
-
-			int pix[4];
-			tex->GetTexel( result.GetUV(), pix );
-
-			int alpha = (tex->mips[0]->GetBpp() == 32) ? pix[3] : pix[0];
-			if( !alpha ) {
-				/*if( V.hitlen < INFINITE_HITLEN )
-					V.hitlen -= len( V.origin - result.hit );
-				else*/
-					V.hitlen = INFINITE_HITLEN;
-
-				V.origin = result.hit + V.dir * 0.001f;
-				result.triangle = NULL;
-			} else
-				break;
-		} else
+		if( !tex )
 			break;
+
+		m_pScene->InterpolateTriangleAttributes( result, IntersectResult::eUV );
+
+		int pix[4];
+		tex->GetTexel( result.GetUV(), pix );
+
+		int alpha = (tex->mips[0]->GetBpp() == 32) ? pix[3] : pix[0];
+		if( alpha )
+			break;
+		/*if( V.hitlen < INFINITE_HITLEN )
+			V.hitlen -= len( V.origin - result.hit );
+		else*/
+			V.hitlen = INFINITE_HITLEN;
+
+		V.origin = result.hit + V.dir * 0.001f;
+		result.triangle = NULL;
+		result.materialId = 0;
 	}
 	if( dot( result.n, V.dir ) > 0.0f )
 		result.hit -= result.n * 0.001f;

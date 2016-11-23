@@ -20,7 +20,7 @@ float3 ShaderPreview::Shade( Ray & V, IntersectResult & result, const Environmen
 		case eColoredCubeShadowed: {
 			Ray ray( result.hit, m_SunDir );
 			IntersectResult rSun;
-			if( !pRaytracer->TraceRay( ray, rSun ))
+			if( pRaytracer->TraceRay( ray, rSun ))
 				shade = 0.2f;
 		}
 		case eColoredCube:

@@ -20,7 +20,7 @@ struct Texture {
 
 	void Init( NanoCore::Image::Ptr pImage );
 
-	bool   IsEmpty() const { return width > 0; }
+	bool   IsEmpty() const { return width == 0; }
 	void   GetTexel( float2 uv, float4 & pix ) const;
 	void   GetTexel( float2 uv, int pix[4] ) const;
 	float3 GetTexel( float2 uv ) const;

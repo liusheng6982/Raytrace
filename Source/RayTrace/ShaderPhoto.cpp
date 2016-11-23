@@ -31,7 +31,7 @@ static float3 BRDF( float3 V, float3 L, float3 N, float3 LightColor, const Mater
 
 	float3 Contrib(0,0,0);
 
-	//Contrib += Diffuse;
+	Contrib += Diffuse;
 
 	if( M.Ns > 0.0f || M.pRoughnessMap ) {
 		float3 H = normalize( V + L );
