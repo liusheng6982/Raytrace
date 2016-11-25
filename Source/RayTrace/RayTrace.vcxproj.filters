@@ -9,6 +9,7 @@
     <ClCompile Include="RayTracer.cpp" />
     <ClCompile Include="ShaderPreview.cpp" />
     <ClCompile Include="ShaderPhoto.cpp" />
+    <ClCompile Include="UIOptionsDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />
@@ -16,6 +17,7 @@
     <ClInclude Include="RayTracer.h" />
     <ClInclude Include="ShaderPreview.h" />
     <ClInclude Include="ShaderPhoto.h" />
+    <ClInclude Include="UIOptionsDialog.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Plan.txt" />

@@ -226,71 +226,31 @@ bool WindowMain::MsgBox( const wchar_t * caption, const wchar_t * text, bool bOk
 	return ::MessageBox( g_hWnd, text, caption, bOkCancel ? MB_OKCANCEL : MB_OK ) == IDOK;
 }
 
-struct Item {
-	std::string name;
-	std::string * pStr;
-	float * f;
-	int * i;
-	std::vector<std::wstring> combo;
-	HWND hWnd;
 
-	Item():pStr(NULL),f(NULL),i(NULL){}
-};
 
-struct WindowInputDialog::Impl
-{
-	std::vector<Item> items;
-};
-
-WindowInputDialog::WindowInputDialog()
-{
-	m_pImpl = new Impl();
+WindowInputDialog::WindowInputDialog() {
 }
 
-WindowInputDialog::~WindowInputDialog()
-{
-	delete m_pImpl;
+WindowInputDialog::~WindowInputDialog() {
 }
 
 static std::map<HWND,WindowInputDialog*> s_wid;
 static WindowInputDialog * s_pWid;
 
-void WindowInputDialog::Add( const char * name, int & i ) {
-	Item it;
-	it.name = name;
-	it.i = &i;
-	m_pImpl->items.push_back( it );
-}
-
-void WindowInputDialog::Add( const char * name, float & f ) {
-	Item it;
-	it.name = name;
-	it.f = &f;
-	m_pImpl->items.push_back( it );
-}
-
-void WindowInputDialog::Add( const char * name, std::string & str ) {
-	Item it;
-	it.name = name;
-	it.pStr = &str;
-	m_pImpl->items.push_back( it );
-}
-
-static void CreateDialogElements( HWND hWnd )
-{
+static void CreateDialogElements( HWND hWnd ) {
 	WindowInputDialog * pDialog = s_pWid;
 	int y = 10, id = 1000;
-	for( auto it = pDialog->m_pImpl->items.begin(); it != pDialog->m_pImpl->items.end(); ++it, ++id ) {
+	for( auto it = pDialog->m_Items.begin(); it != pDialog->m_Items.end(); ++it, ++id ) {
 		char buf[64];
-		if( it->pStr )
-			strcpy_s( buf, it->pStr->c_str() );
+		if( it->str )
+			strcpy_s( buf, it->str->c_str() );
 		else if( it->f )
 			sprintf_s( buf, "%0.4f", *it->f );
 		else if( it->i )
 			sprintf_s( buf, "%d", *it->i );
 
 		CreateWindowA( "STATIC", it->name.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 10, y, 220, 20, hWnd, 0, g_hInstance, NULL );
-		it->hWnd = CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 230, y, 150, 20, hWnd, (HMENU)id, g_hInstance, NULL );
+		CreateWindowA( "EDIT", buf, WS_CHILD | WS_VISIBLE, 230, y, 150, 20, hWnd, (HMENU)id, g_hInstance, NULL );
 		y += 20;
 	}
 	y += 20;
@@ -302,15 +262,15 @@ static void CreateDialogElements( HWND hWnd )
 
 static void ReadDialogElements( WindowInputDialog * pDialog, HWND hWnd ) {
 	int id=1000;
-	for( auto it = pDialog->m_pImpl->items.begin(); it != pDialog->m_pImpl->items.end(); ++it, ++id ) {
+	for( auto it = pDialog->m_Items.begin(); it != pDialog->m_Items.end(); ++it, ++id ) {
 		char buf[128];
 		SendDlgItemMessageA( hWnd, id, WM_GETTEXT, 128, (LPARAM)buf );
 		if( it->i ) {
 			*it->i = atol( buf );
 		} else if( it->f ) {
 			*it->f = (float)atof( buf );
-		} else if( it->pStr ) {
-			*it->pStr = buf;
+		} else if( it->str ) {
+			*it->str = buf;
 		}
 	}
 }
@@ -330,7 +290,7 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 							ReadDialogElements( pDialog, hWnd );
 							pDialog->OnOK();
 						}
-						pDialog->m_pImpl->items.clear();
+						pDialog->m_Items.clear();
 						EnableWindow( g_hWnd, TRUE );
 						DestroyWindow( hWnd );
 						UnregisterClass( L"NanoCoreWindowInputDialog", g_hInstance );
@@ -352,7 +312,7 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 
 void WindowInputDialog::Show( const wchar_t * pCaption )
 {
-	int w = 800, h = (int)m_pImpl->items.size() * 20 + 40 + 150;
+	int w = 800, h = (int)m_Items.size() * 20 + 40 + 150;
 
 	WNDCLASSEXW wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, InputDialogProc, 0, 0, g_hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, L"NanoCoreWindowInputDialog", 0 };
 	RegisterClassEx( &wcex );
@@ -366,6 +326,30 @@ void WindowInputDialog::Show( const wchar_t * pCaption )
 	InvalidateRect( hWnd, NULL, TRUE );
 	UpdateWindow( hWnd );
 	ShowWindow( hWnd, SW_SHOW );
+}
+
+void WindowInputDialog::Serialize( XmlNode * pNode ) {
+	if( pNode->GetNumChildren()) {
+		for( int i=0; i<pNode->GetNumChildren(); ++i ) {
+			XmlNode * pChild = pNode->GetChild( i );
+			int attrib = pChild->GetAttributeByName( "name" );
+			const char * name = pChild->GetAttributeValue( attrib );
+
+			for( size_t j=0; j<m_Items.size(); ++j ) {
+				if( m_Items[j].name == name ) {
+					m_Items[j].
+				}
+			}
+
+			
+		}
+	}
+
+
+	for( int i=0; i<pNode->GetNumChildren(); || i<m_Items.size(); ++i ) {
+		pNode->SerializeChild( )
+
+	}
 }
 
 } //NanoCore

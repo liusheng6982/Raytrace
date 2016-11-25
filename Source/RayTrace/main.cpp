@@ -8,7 +8,7 @@
 #include "RayTracer.h"
 #include "ShaderPreview.h"
 #include "ShaderPhoto.h"
-
+#include "UIOptionsDialog.h"
 
 
 
@@ -35,7 +35,6 @@ public:
 			m_pLoader = NULL;
 		}
 	}
-
 private:
 	std::wstring m_wFile;
 	IScene * m_pScene;
@@ -43,6 +42,8 @@ private:
 	Raytracer * m_pRaytracer;
 	IStatusCallback * m_pStatusCallback;
 };
+
+
 
 class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 {
@@ -69,18 +70,6 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 		STATE_RENDERING,
 	};
 
-	struct OptionItem {
-		std::string name;
-		int * i;
-		float * f;
-		std::string * str;
-		std::vector<std::string> combo;
-
-		OptionItem(){}
-		OptionItem( const char * name, int & i ) : name(name), i(&i), f(0), str(0) {}
-		OptionItem( const char * name, float & f ) : name(name), i(0), f(&f), str(0) {}
-		OptionItem( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
-	};
 	std::vector<OptionItem> m_OptionItems;
 
 	void PersistOptions( bool bLoad ) {
@@ -122,27 +111,6 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 			}
 		}
 	}
-
-	class OptionsWnd : public NanoCore::WindowInputDialog {
-	public:
-		MainWnd & wnd;
-		OptionsWnd( MainWnd & wnd ) : wnd(wnd) {
-			for( size_t i=0; i<wnd.m_OptionItems.size(); ++i ) {
-				OptionItem & it = wnd.m_OptionItems[i];
-				if( it.i )
-					Add( it.name.c_str(), *it.i );
-				else if( it.f )
-					Add( it.name.c_str(), *it.f );
-				else if( it.str )
-					Add( it.name.c_str(), *it.str );
-			}
-		}
-	protected:
-		virtual void OnOK() {
-			wnd.m_Image.Init( wnd.m_PreviewResolution, wnd.m_PreviewResolution * wnd.GetHeight() / wnd.GetWidth(), 24 );
-			wnd.PersistOptions( false );
-		}
-	};
 
 public:
 	MainWnd() {

@@ -44,21 +44,28 @@ public:
 
 class WindowInputDialog {
 public:
+	struct Item {
+		std::string name;
+		int * i;
+		float * f;
+		std::string * str;
+
+		Item(){}
+		Item( const char * name, int & i ) : name(name), i(&i), f(0), str(0) {}
+		Item( const char * name, float & f ) : name(name), i(0), f(&f), str(0) {}
+		Item( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
+	};
+
 	WindowInputDialog();
 	virtual ~WindowInputDialog();
 
 	void Show( const wchar_t * caption );
 
-	struct Impl;
-	Impl * m_pImpl;
+	void Serialize( XmlNode * pNode );
 
 	virtual void OnOK() {}
 
-protected:
-	void Add( const char * name, std::string & str );
-	void Add( const char * name, float & f );
-	void Add( const char * name, int & i );
-	void Add( const char * name, std::vector<std::wstring> & combo, int & item );
+	std::vector<Item> m_Items;
 };
 
 }
