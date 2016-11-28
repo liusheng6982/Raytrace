@@ -44,18 +44,6 @@ public:
 
 class WindowInputDialog {
 public:
-	struct Item {
-		std::string name;
-		int * i;
-		float * f;
-		std::string * str;
-
-		Item(){}
-		Item( const char * name, int & i ) : name(name), i(&i), f(0), str(0) {}
-		Item( const char * name, float & f ) : name(name), i(0), f(&f), str(0) {}
-		Item( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
-	};
-
 	WindowInputDialog();
 	virtual ~WindowInputDialog();
 

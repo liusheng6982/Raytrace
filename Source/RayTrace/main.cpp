@@ -118,17 +118,6 @@ public:
 		m_State = STATE_PREVIEW;
 		m_PreviewResolution = 200;
 
-		m_OptionItems.push_back( OptionItem( "Preview resolution", m_PreviewResolution ));
-		m_OptionItems.push_back( OptionItem( "Raytrace threads", m_Raytracer.m_NumThreads ));
-		m_OptionItems.push_back( OptionItem( "GI bounces", m_Environment.GIBounces ));
-		m_OptionItems.push_back( OptionItem( "GI samples", m_Environment.GISamples ));
-		m_OptionItems.push_back( OptionItem( "Sun samples", m_Environment.SunSamples ));
-		m_OptionItems.push_back( OptionItem( "Sun disk angle", m_Environment.SunDiskAngle ));
-		m_OptionItems.push_back( OptionItem( "Sun angle 1", m_Environment.SunAngle1 ));
-		m_OptionItems.push_back( OptionItem( "Sun angle 2", m_Environment.SunAngle2 ));
-		m_OptionItems.push_back( OptionItem( "Sun strength", m_Environment.SunStrength ));
-		m_OptionItems.push_back( OptionItem( "Sky strength", m_Environment.SkyStrength ));
-
 		m_UpdateMs = 20;
 		m_bCtrlKey = false;
 		m_strBottomHelpLine = "Press Space to open file";

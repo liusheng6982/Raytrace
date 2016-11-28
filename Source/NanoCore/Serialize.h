@@ -64,5 +64,22 @@ private:
 
 
 
+struct KeyValuePtr {
+	std::string name;
+	int * i;
+	float * f;
+	std::string * str;
+
+	KeyValuePtr(){}
+	KeyValuePtr( const char * name, int & i ) : name(name), i(&i), f(0), str(0) {}
+	KeyValuePtr( const char * name, float & f ) : name(name), i(0), f(&f), str(0) {}
+	KeyValuePtr( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
+
+	void SetValue( const char * pc );
+	std::string GetValue() const;
+};
+
+
+
 }
 #endif

@@ -144,6 +144,7 @@
     <ClInclude Include="Windows.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Common.cpp" />
     <ClCompile Include="File.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Jobs.cpp" />

@@ -8,16 +8,17 @@
 class OptionsWnd : public NanoCore::WindowInputDialog {
 public:
 	MainWnd & wnd;
-	OptionsWnd( std::vector<OptionItem> & items ) {
-		for( size_t i=0; i<wnd.m_OptionItems.size(); ++i ) {
-			OptionItem & it = wnd.m_OptionItems[i];
-			if( it.i )
-				Add( it.name.c_str(), *it.i );
-			else if( it.f )
-				Add( it.name.c_str(), *it.f );
-			else if( it.str )
-				Add( it.name.c_str(), *it.str );
-		}
+	OptionsWnd( Environment & env, int & previewResolution, int & numThreads ) {
+		m_Items.push_back( Item( "Preview resolution", previewResolution ));
+		m_Items.push_back( Item( "Raytrace threads", numThreads ));
+		m_Items.push_back( Item( "GI bounces", env.GIBounces ));
+		m_Items.push_back( Item( "GI samples", env.GISamples ));
+		m_Items.push_back( Item( "Sun samples", env.SunSamples ));
+		m_Items.push_back( Item( "Sun disk angle", env.SunDiskAngle ));
+		m_Items.push_back( Item( "Sun angle 1", env.SunAngle1 ));
+		m_Items.push_back( Item( "Sun angle 2", env.SunAngle2 ));
+		m_Items.push_back( Item( "Sun strength", env.SunStrength ));
+		m_Items.push_back( Item( "Sky strength", env.SkyStrength ));
 	}
 protected:
 	virtual void OnOK() {

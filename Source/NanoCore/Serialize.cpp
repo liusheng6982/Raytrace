@@ -263,6 +263,26 @@ XmlNode * XmlNode::SerializeChild( const char * name ) {
 	return p;
 }
 
+void KeyValuePtr::SetValue( const char * pc ) {
+	if( str )
+		*str = pc;
+	else if( i )
+		*i = atol( pc );
+	else if( f )
+		*f = atof( pc );
+}
+
+std::string KeyValuePtr::GetValue() const {
+	char pc[32];
+	if( str )
+		return *str;
+	else if( i )
+		sprintf( pc, "%d", *i );
+	else if( f )
+		sprintf( pc, "%0.6f", *f );
+	return pc;
+}
+
 
 
 }

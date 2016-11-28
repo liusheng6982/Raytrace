@@ -21,5 +21,6 @@
     <ClCompile Include="Serialize.cpp" />
     <ClCompile Include="String.cpp" />
     <ClCompile Include="Image.cpp" />
+    <ClCompile Include="Common.cpp" />
   </ItemGroup>
 </Project>
