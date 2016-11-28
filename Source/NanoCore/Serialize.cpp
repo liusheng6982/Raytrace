@@ -21,8 +21,12 @@ XmlNode::~XmlNode() {
 		delete m_Children[i];
 }
 
-const char * XmlNode::GetName() {
+const char * XmlNode::GetName() const {
 	return m_Name.c_str();
+}
+
+const char * XmlNode::GetValue() const {
+	return m_Value.c_str();
 }
 
 int XmlNode::GetAttributeByName( const char * name ) {
@@ -269,7 +273,7 @@ void KeyValuePtr::SetValue( const char * pc ) {
 	else if( i )
 		*i = atol( pc );
 	else if( f )
-		*f = atof( pc );
+		*f = (float)atof( pc );
 }
 
 std::string KeyValuePtr::GetValue() const {
@@ -283,6 +287,36 @@ std::string KeyValuePtr::GetValue() const {
 	return pc;
 }
 
+std::string KeyValuePtr::GetNameAsTag() const {
+	std::string s( name );
+	for( size_t i=0; i<s.size(); ++i )
+		if( s[i] == ' ' )
+			s[i] = '_';
+	return s;
+}
 
+void Serialize( XmlNode * pRoot, KeyValuePtr & obj ) {
+	std::string tag = obj.GetNameAsTag();
+	XmlNode * node = pRoot->GetChild( tag.c_str() );
+	if( node ) {
+		obj.SetValue( node->GetValue() );
+	} else {
+		node = new XmlNode( tag.c_str() );
+		std::string s = obj.GetValue();
+		node->Set( s.c_str() );
+		pRoot->AddChild( node );
+	}
+}
+
+void Serialize( XmlNode * pRoot, const char * tag, std::vector<KeyValuePtr> & v ) {
+	XmlNode * node = pRoot->GetChild( tag );
+	if( !node ) {
+		node = new XmlNode( tag );
+		pRoot->AddChild( node );
+	}
+	for( int i=0; i<v.size(); ++i ) {
+		Serialize( node, v[i] );
+	}
+}
 
 }

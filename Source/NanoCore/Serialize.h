@@ -21,7 +21,8 @@ public:
 	}
 	XmlNode * SerializeChild( const char * name );
 
-	const char * GetName();
+	const char * GetName() const;
+	const char * GetValue() const;
 	bool GetAttribute( const char * name, float & f );
 	bool GetAttribute( const char * name, int & i );
 	bool GetAttribute( const char * name, std::string & s );
@@ -75,11 +76,30 @@ struct KeyValuePtr {
 	KeyValuePtr( const char * name, float & f ) : name(name), i(0), f(&f), str(0) {}
 	KeyValuePtr( const char * name, std::string & str ) : name(name), i(0), f(0), str(&str) {}
 
+	std::string GetNameAsTag() const;
+
 	void SetValue( const char * pc );
 	std::string GetValue() const;
 };
 
+/*template< typename T > void Serialize( XmlNode * pRoot, const char * tag, std::vector<T> & v ) {
+	XmlNode * p = pRoot->GetChild( tag );
+	if( p ) {
+		for( int i=0; i<p->GetNumChildren(); ++i ) {
+			XmlNode * item = p->GetChild( i );
+			Serialize( item, v[i] );
+		}
+	} else {
+		p = new XmlNode( tag );
+		pRoot->AddChild( p );
+		for( size_t i=0; i<v.size(); ++i ) {
+			Serialize( p, v[i] );
+		}
+	}
+}*/
 
+void Serialize( XmlNode * pRoot, KeyValuePtr & obj );
+void Serialize( XmlNode * pRoot, const char * tag, std::vector<KeyValuePtr> & v );
 
 }
 #endif
