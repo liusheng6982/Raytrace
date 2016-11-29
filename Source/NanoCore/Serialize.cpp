@@ -295,14 +295,14 @@ std::string KeyValuePtr::GetNameAsTag() const {
 	return s;
 }
 
-void Serialize( XmlNode * pRoot, KeyValuePtr & obj ) {
-	std::string tag = obj.GetNameAsTag();
+void KeyValuePtr::Serialize( XmlNode * pRoot ) {
+	std::string tag = GetNameAsTag();
 	XmlNode * node = pRoot->GetChild( tag.c_str() );
 	if( node ) {
-		obj.SetValue( node->GetValue() );
+		SetValue( node->GetValue() );
 	} else {
 		node = new XmlNode( tag.c_str() );
-		std::string s = obj.GetValue();
+		std::string s = GetValue();
 		node->Set( s.c_str() );
 		pRoot->AddChild( node );
 	}

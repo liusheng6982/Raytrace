@@ -80,25 +80,29 @@ struct KeyValuePtr {
 
 	void SetValue( const char * pc );
 	std::string GetValue() const;
+
+	void Serialize( XmlNode * pRoot );
 };
 
-/*template< typename T > void Serialize( XmlNode * pRoot, const char * tag, std::vector<T> & v ) {
+template< typename T > void Serialize( XmlNode * pRoot, const char * tag, std::vector<T> & v ) {
 	XmlNode * p = pRoot->GetChild( tag );
 	if( p ) {
+		v.resize( p->GetNumChildren() );
 		for( int i=0; i<p->GetNumChildren(); ++i ) {
 			XmlNode * item = p->GetChild( i );
-			Serialize( item, v[i] );
+			v[i].Serialize( item );
 		}
 	} else {
 		p = new XmlNode( tag );
 		pRoot->AddChild( p );
 		for( size_t i=0; i<v.size(); ++i ) {
-			Serialize( p, v[i] );
+			XmlNode * item = new XmlNode( "item" );
+			p->AddChild( item );
+			v[i].Serialize( item );
 		}
 	}
-}*/
+}
 
-void Serialize( XmlNode * pRoot, KeyValuePtr & obj );
 void Serialize( XmlNode * pRoot, const char * tag, std::vector<KeyValuePtr> & v );
 
 }

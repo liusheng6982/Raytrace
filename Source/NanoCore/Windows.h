@@ -49,11 +49,9 @@ public:
 
 	void Show( const wchar_t * caption );
 
-	void Serialize( XmlNode * pNode );
-
 	virtual void OnOK() {}
 
-	std::vector<Item> m_Items;
+	std::vector<KeyValuePtr> m_Items;
 };
 
 }

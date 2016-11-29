@@ -112,6 +112,22 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 		}
 	}
 
+	void Serialize( bool bSave ) {
+		std::wstring wFile = m_wFile + L".xml";
+		File * fp = FS::Open( wFile.c_str(), bSave ? FS::efWriteTrunc : FS::efRead );
+		TextFile tf( fp );
+
+		if( bSave ) {
+			XmlNode * scene = new XmlNode( "Scene" );
+			Serialize( scene, "Environment", m_OptionsDialog.m_Items );
+			scene->Save( tf );
+		} else {
+			XmlNode * scene = new XmlNode();
+			scene->Load( tf );
+			Serialize( scene, "Environment", m_OptionsDialog.m_Items );
+		}
+	}
+
 public:
 	MainWnd() {
 		m_bInvalidate = false;
@@ -495,6 +511,8 @@ public:
 	NanoCore::CriticalSection m_csStatus;
 	ShaderPreview   m_ShaderPreview;
 	ShaderPhoto     m_ShaderPhoto;
+
+	OptionsDialog   m_OptionsDialog;
 };
 
 
