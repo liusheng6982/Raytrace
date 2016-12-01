@@ -58,4 +58,5 @@ float3 ShaderPreview::Shade( Ray & V, IntersectResult & result, const Environmen
 			break;
 		}
 	}
+	return float3(0.0f);
 }

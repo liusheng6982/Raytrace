@@ -281,9 +281,9 @@ std::string KeyValuePtr::GetValue() const {
 	if( str )
 		return *str;
 	else if( i )
-		sprintf( pc, "%d", *i );
+		sprintf_s( pc, "%d", *i );
 	else if( f )
-		sprintf( pc, "%0.6f", *f );
+		sprintf_s( pc, "%0.6f", *f );
 	return pc;
 }
 
@@ -314,8 +314,8 @@ void Serialize( XmlNode * pRoot, const char * tag, std::vector<KeyValuePtr> & v 
 		node = new XmlNode( tag );
 		pRoot->AddChild( node );
 	}
-	for( int i=0; i<v.size(); ++i ) {
-		Serialize( node, v[i] );
+	for( size_t i=0; i<v.size(); ++i ) {
+		v[i].Serialize( node );
 	}
 }
 

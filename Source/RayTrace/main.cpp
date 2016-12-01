@@ -62,7 +62,10 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 	const static int IDC_VIEW_PREVIEWMODE_SPECULAR = 1205;
 	const static int IDC_VIEW_PREVIEWMODE_BUMP = 1206;
 	const static int IDC_VIEW_OPTIONS = 1102;
+	const static int IDC_OPTIONS_OK = 1103;
 	const static int IDC_CAMERAS_FIRST = 2000;
+
+
 
 	enum EState {
 		STATE_LOADING,
@@ -70,62 +73,32 @@ class MainWnd : public NanoCore::WindowMain, public IStatusCallback
 		STATE_RENDERING,
 	};
 
-	std::vector<OptionItem> m_OptionItems;
+	enum ESerializeType { eSave, eLoad };
 
-	void PersistOptions( bool bLoad ) {
-		std::wstring wFile = m_wFile + L".options";
-		NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFile.c_str(), bLoad ? NanoCore::FS::efRead : NanoCore::FS::efWriteTrunc );
+	void Serialize( std::wstring wFile, ESerializeType eST ) {
+		NanoCore::IFile::Ptr fp = NanoCore::FS::Open( wFile.c_str(), eST == eSave ? NanoCore::FS::efWriteTrunc : NanoCore::FS::efRead );
 		if( !fp )
 			return;
 
 		NanoCore::TextFile tf( fp );
+		NanoCore::XmlNode * scene = new NanoCore::XmlNode( "Scene" );
 
-		for( size_t i=0; i<m_OptionItems.size(); ++i ) {
-			OptionItem & it = m_OptionItems[i];
-			if( bLoad ) {
-				char buf[512] = "";
-				tf.ReadLine( buf, 512 );
+		if( eST == eLoad ) scene->Load( tf );
 
-				char * nl = strchr( buf, '\n' );
-				if( nl ) nl[0] = 0;
-				nl = strchr( buf, '\r' );
-				if( nl ) nl[0] = 0;
+		NanoCore::Serialize( scene, "Environment", m_Options );
+		NanoCore::Serialize( scene, "Cameras", m_Cameras );
 
-				const char * p = strchr( buf, '=' );
-				if( p ) {
-					if( it.i )
-						*it.i = atol(p+1);
-					else if( it.f )
-						*it.f = (float)atof(p+1);
-					else
-						*it.str = p+1;
-				}
-			} else {
-				tf.Write( "%s=", it.name.c_str() );
-				if( it.i )
-					tf.Write( "%d\n", *it.i );
-				else if( it.f )
-					tf.Write( "%0.5f\n", *it.f );
-				else
-					tf.Write( "%s\n", it.str->c_str() );
+		if( eST == eSave )
+			scene->Save( tf );
+		else {
+			ClearMenu( m_CamerasMenu );
+			for( size_t i=0; i<m_Cameras.size(); ++i ) {
+				wchar_t name[64];
+				swprintf( name, L"Camera %d", i+1 );
+				AddMenuItem( m_CamerasMenu, name, IDC_CAMERAS_FIRST + i );
 			}
 		}
-	}
-
-	void Serialize( bool bSave ) {
-		std::wstring wFile = m_wFile + L".xml";
-		File * fp = FS::Open( wFile.c_str(), bSave ? FS::efWriteTrunc : FS::efRead );
-		TextFile tf( fp );
-
-		if( bSave ) {
-			XmlNode * scene = new XmlNode( "Scene" );
-			Serialize( scene, "Environment", m_OptionsDialog.m_Items );
-			scene->Save( tf );
-		} else {
-			XmlNode * scene = new XmlNode();
-			scene->Load( tf );
-			Serialize( scene, "Environment", m_OptionsDialog.m_Items );
-		}
+		delete scene;
 	}
 
 public:
@@ -140,6 +113,17 @@ public:
 		m_MainThreadId = NanoCore::GetCurrentThreadId();
 
 		m_pScene = CreateKDTree( 8 );
+
+		m_Options.push_back( NanoCore::KeyValuePtr( "Preview resolution", m_PreviewResolution ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Raytrace threads", m_Raytracer.m_NumThreads ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "GI bounces", m_Environment.GIBounces ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "GI samples", m_Environment.GISamples ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Sun samples", m_Environment.SunSamples ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Sun disk angle", m_Environment.SunDiskAngle ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Sun angle 1", m_Environment.SunAngle1 ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Sun angle 2", m_Environment.SunAngle2 ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Sun strength", m_Environment.SunStrength ));
+		m_Options.push_back( NanoCore::KeyValuePtr( "Sky strength", m_Environment.SkyStrength ));
 	}
 	~MainWnd() {
 	}
@@ -343,10 +327,15 @@ public:
 				AddCurrentCamera();
 				break;
 			case IDC_VIEW_OPTIONS: {
-				m_OptionsWnd = std::auto_ptr<OptionsWnd>( new OptionsWnd( *this ) );
-				m_OptionsWnd->Show( L"Options" );
+				m_pOptionsDialog = std::auto_ptr<OptionsDialog>( new OptionsDialog( this, IDC_OPTIONS_OK, m_Environment, m_PreviewResolution, m_Raytracer.m_NumThreads ));
+				m_pOptionsDialog->m_Items = m_Options;
+				m_pOptionsDialog->Show( L"Options" );
 				break;
 			}
+			case IDC_OPTIONS_OK:
+				m_Image.Init( m_PreviewResolution, m_PreviewResolution * GetHeight() / GetWidth(), 24 );
+				Serialize( m_wFile + L".xml", eSave );
+				break;
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBE:
 			case IDC_VIEW_PREVIEWMODE_COLOREDCUBESHADOWED:
 			case IDC_VIEW_PREVIEWMODE_TRIANGLEID:
@@ -388,44 +377,7 @@ public:
 		swprintf( w, 128, L"Camera %d", m_Cameras.size()+1 );
 		AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + (int)m_Cameras.size());
 		m_Cameras.push_back( m_Camera );
-		SaveCameras();
-	}
-	void SaveCameras() {
-		NanoCore::XmlNode * root = new NanoCore::XmlNode( "Cameras" );
-		for( int i=0; i<(int)m_Cameras.size(); ++i ) {
-			root->AddChild( new NanoCore::XmlNode( "Camera" ));
-			m_Cameras[i].Serialize( root->GetChild( i ));
-		}
-		std::wstring name = m_wFile + L".cameras.xml";
-		NanoCore::IFile::Ptr f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efWrite | NanoCore::FS::efTrunc );
-		if( f ) {
-			NanoCore::TextFile tf( f );
-			root->Save( tf );
-			delete root;
-		}
-	}
-	void LoadCameras() {
-		m_Cameras.clear();
-		ClearMenu( m_CamerasMenu );
-		std::wstring name = m_wFile + L".cameras.xml";
-		NanoCore::IFile::Ptr f = NanoCore::FS::Open( name.c_str(), NanoCore::FS::efRead );
-		if( f ) {
-			NanoCore::TextFile tf( f );
-			NanoCore::XmlNode * root = new NanoCore::XmlNode();
-			root->Load( tf );
-			for( int i=0; i<root->GetNumChildren(); ++i ) {
-				NanoCore::XmlNode * camNode = root->GetChild( i );
-				if( !strcmp( camNode->GetName(), "Camera" )) {
-					m_Cameras.push_back( Camera() );
-					m_Cameras.back().Serialize( camNode );
-
-					wchar_t w[128];
-					swprintf( w, 128, L"Camera %d", i+1 );
-					AddMenuItem( m_CamerasMenu, w, IDC_CAMERAS_FIRST + i);
-				}
-			}
-			delete root;
-		}
+		Serialize( m_wFile + L".xml", eSave );
 	}
 	void LoadModel() {
 		std::wstring wFolder = NanoCore::GetExecutableFolder();
@@ -441,8 +393,7 @@ public:
 			if( p != std::wstring::npos )
 				m_wFile.erase( p );
 
-			PersistOptions( true );
-			LoadCameras();
+			Serialize( m_wFile + L".xml", eLoad );
 		}
 	}
 	void SaveImage() {
@@ -503,7 +454,6 @@ public:
 	int             m_CamerasMenu;
 	std::vector<Camera> m_Cameras;
 	int             m_PreviewResolution;
-	std::auto_ptr<OptionsWnd> m_OptionsWnd;
 	int             m_UpdateMs;
 	bool            m_bCtrlKey;
 	Environment     m_Environment;
@@ -512,7 +462,8 @@ public:
 	ShaderPreview   m_ShaderPreview;
 	ShaderPhoto     m_ShaderPhoto;
 
-	OptionsDialog   m_OptionsDialog;
+	std::vector<NanoCore::KeyValuePtr>  m_Options;
+	std::auto_ptr<OptionsDialog> m_pOptionsDialog;
 };
 
 

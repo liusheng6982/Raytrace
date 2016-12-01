@@ -268,7 +268,7 @@ bool ObjectFileLoader::Load( const wchar_t * pwFilename, IStatusCallback * pCall
 			case 'f': {
 				Triangle f;
 				f.material = materialID;
-				assert( materialID >= 0 && materialID < m_Materials.size() );
+				assert( m_Materials.empty() || materialID >= 0 && materialID < m_Materials.size() );
 				char * p = line+2;
 
 				const char * sep1 = strchr( p, '/' );

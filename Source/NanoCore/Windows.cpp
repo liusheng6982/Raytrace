@@ -22,6 +22,13 @@ static NanoCore::WindowMain * s_pWindowMain;
 static bool s_bQuit;
 static int s_Width, s_Height, s_MouseX, s_MouseY;
 
+namespace NanoCore {
+
+static std::map<HWND,WindowInputDialog*> s_wid;
+static WindowInputDialog * s_pWid;
+
+}
+
 
 
 static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -91,13 +98,17 @@ static LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 namespace NanoCore {
 
-WindowMain::WindowMain()
-{
+void Window::SendCommand( int idx ) {
+	HWND hwnd = (HWND)m_pHandle;
+	::SendMessageA( hwnd, WM_COMMAND, idx, 0 );
+}
+
+WindowMain::WindowMain() {
 	s_pWindowMain = this;
 	s_bQuit = false;
 }
-WindowMain::~WindowMain()
-{
+
+WindowMain::~WindowMain() {
 	s_pWindowMain = NULL;
 }
 
@@ -111,6 +122,7 @@ bool WindowMain::Init( int w, int h )
 		return false;
 
 	g_hWnd = CreateWindow( szWindowClass, _T(""), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 820, 650, NULL, NULL, g_hInstance, NULL );
+	m_pHandle = (void*)g_hWnd;
 	if( !g_hWnd )
 		return false;
 
@@ -234,9 +246,6 @@ WindowInputDialog::WindowInputDialog() {
 WindowInputDialog::~WindowInputDialog() {
 }
 
-static std::map<HWND,WindowInputDialog*> s_wid;
-static WindowInputDialog * s_pWid;
-
 static void CreateDialogElements( HWND hWnd ) {
 	WindowInputDialog * pDialog = s_pWid;
 	int y = 10, id = 1000;
@@ -310,8 +319,7 @@ static LRESULT CALLBACK InputDialogProc( HWND hWnd, UINT message, WPARAM wParam,
 	return 0;
 }
 
-void WindowInputDialog::Show( const wchar_t * pCaption )
-{
+void WindowInputDialog::Show( const wchar_t * pCaption ) {
 	int w = 800, h = (int)m_Items.size() * 20 + 40 + 150;
 
 	WNDCLASSEXW wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, InputDialogProc, 0, 0, g_hInstance, 0, 0, (HBRUSH)(COLOR_WINDOW+1), 0, L"NanoCoreWindowInputDialog", 0 };
@@ -322,44 +330,17 @@ void WindowInputDialog::Show( const wchar_t * pCaption )
 	s_pWid = this;
 
 	HWND hWnd = CreateWindow( L"NanoCoreWindowInputDialog", pCaption, WS_OVERLAPPED | WS_CAPTION, CW_USEDEFAULT, CW_USEDEFAULT, w, h, g_hWnd, NULL, g_hInstance, NULL );
+	m_pHandle = (void*)hWnd;
 	s_wid[hWnd] = this;
 	InvalidateRect( hWnd, NULL, TRUE );
 	UpdateWindow( hWnd );
 	ShowWindow( hWnd, SW_SHOW );
 }
 
-void WindowInputDialog::Serialize( XmlNode * pNode ) {
-	if( pNode->GetNumChildren()) {
-		for( int i=0; i<pNode->GetNumChildren(); ++i ) {
-			XmlNode * pChild = pNode->GetChild( i );
-			int attrib = pChild->GetAttributeByName( "name" );
-			const char * name = pChild->GetAttributeValue( attrib );
-
-			for( size_t j=0; j<m_Items.size(); ++j ) {
-				if( m_Items[j].name == name ) {
-					m_Items[j].
-				}
-			}
-
-			
-		}
-	}
-
-
-	for( int i=0; i<pNode->GetNumChildren(); || i<m_Items.size(); ++i ) {
-		pNode->SerializeChild( )
-
-	}
-}
-
-
-
 } //NanoCore
 
-int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
-{
+int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow ) {
 	g_hInstance = hInstance;
 	s_CmdShow = nCmdShow;
-
 	return Main();
 }

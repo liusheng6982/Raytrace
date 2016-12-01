@@ -4,10 +4,20 @@
 #include <string>
 #include <vector>
 #include "Common.h"
+#include "Serialize.h"
 
 namespace NanoCore {
 
-class WindowMain {
+class Window {
+public:
+	virtual ~Window() {}
+	virtual void SendCommand( int idx );
+
+protected:
+	void * m_pHandle;
+};
+
+class WindowMain : public Window {
 public:
 	WindowMain();
 	virtual ~WindowMain();
@@ -42,7 +52,7 @@ public:
 	static bool MsgBox( const wchar_t * caption, const wchar_t * text, bool bOkCancel );
 };
 
-class WindowInputDialog {
+class WindowInputDialog : public Window {
 public:
 	WindowInputDialog();
 	virtual ~WindowInputDialog();
