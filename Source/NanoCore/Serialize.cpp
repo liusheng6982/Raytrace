@@ -204,8 +204,10 @@ void XmlNode::Save( TextFile & tf ) {
 			tf.Write( ">%s</%s>\n", m_Value.c_str(), m_Name.c_str());
 	} else {
 		tf.Write( "<%s>\n", GetName());
+		tf.ChangeIdentation( +2 );
 		for( int i=0; i<GetNumChildren(); ++i )
 			GetChild(i)->Save( tf );
+		tf.ChangeIdentation( -2 );
 		tf.Write( "</%s>\n", GetName());
 	}
 }

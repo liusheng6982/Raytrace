@@ -30,6 +30,7 @@ public:
 	uint32 ReadLine( std::string & line );
 	uint32 Write( const char * fmt, ... );
 	int    GetOpenMode();
+	int    ChangeIdentation( int delta );
 
 	uint64 Tell();
 	uint64 GetSize();
@@ -37,7 +38,8 @@ public:
 private:
 	IFile::Ptr m_pFile;
 	char     * m_pBuffer;
-	int        m_BufferSize, m_Position;
+	int        m_BufferSize, m_Position, m_Ident;
+	bool       m_bNewLine;
 };
 
 namespace FS {

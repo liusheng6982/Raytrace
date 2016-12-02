@@ -97,6 +97,8 @@ File::~File() {
 TextFile::TextFile( IFile::Ptr file ) : m_pFile(file) {
 	m_pBuffer = new char[1024];
 	m_BufferSize = m_Position = 1024;
+	m_Ident = 0;
+	m_bNewLine = true;
 }
 
 TextFile::~TextFile() {
@@ -157,7 +159,25 @@ uint32 TextFile::Write( const char * fmt, ... ) {
 	va_start( args, fmt );
 	int len = vsprintf_s( buf, fmt, args );
 	va_end( args );
-	return (uint32)m_pFile->Write( buf, len );
+
+	int ident = m_Ident < 0 ? 0 : m_Ident;
+	if( !ident )
+		return (uint32)m_pFile->Write( buf, len );
+
+	char buf2[2048];
+	int  len2 = 0;
+	for( int i=0; i<len; ++i ) {
+		if( m_bNewLine ) {
+			for( int k=0; k<ident; ++k )
+				buf2[len2+k] = ' ';
+			len2 += ident;
+			m_bNewLine = false;
+		}
+		buf2[len2++] = buf[i];
+		if( buf[i] == '\n' ) m_bNewLine = true;
+	}
+	buf2[len2] = 0;
+	return (uint32)m_pFile->Write( buf2, len2 );
 }
 
 int TextFile::GetOpenMode() {
@@ -170,6 +190,12 @@ uint64 TextFile::Tell() {
 
 uint64 TextFile::GetSize() {
 	return m_pFile->GetSize();
+}
+
+int TextFile::ChangeIdentation( int delta ) {
+	int curr = m_Ident;
+	m_Ident += delta;
+	return curr;
 }
 
 }
