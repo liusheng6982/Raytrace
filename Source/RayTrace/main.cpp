@@ -8,7 +8,6 @@
 #include "RayTracer.h"
 #include "ShaderPreview.h"
 #include "ShaderPhoto.h"
-#include "UIOptionsDialog.h"
 
 
 
@@ -41,6 +40,20 @@ private:
 	ISceneLoader * m_pLoader;
 	Raytracer * m_pRaytracer;
 	IStatusCallback * m_pStatusCallback;
+};
+
+
+class OptionsDialog : public NanoCore::WindowInputDialog {
+public:
+	OptionsDialog( Window * parent, int id ) : parent(parent), id(id) {}
+
+protected:
+	Window * parent;
+	int      id;
+
+	virtual void OnOK() {
+		parent->SendCommand( id );
+	}
 };
 
 
@@ -327,7 +340,7 @@ public:
 				AddCurrentCamera();
 				break;
 			case IDC_VIEW_OPTIONS: {
-				m_pOptionsDialog = std::auto_ptr<OptionsDialog>( new OptionsDialog( this, IDC_OPTIONS_OK, m_Environment, m_PreviewResolution, m_Raytracer.m_NumThreads ));
+				m_pOptionsDialog = std::auto_ptr<OptionsDialog>( new OptionsDialog( this, IDC_OPTIONS_OK ));
 				m_pOptionsDialog->m_Items = m_Options;
 				m_pOptionsDialog->Show( L"Options" );
 				break;

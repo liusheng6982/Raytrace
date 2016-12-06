@@ -185,7 +185,6 @@
     <ClCompile Include="RayTracer.cpp" />
     <ClCompile Include="ShaderPhoto.cpp" />
     <ClCompile Include="ShaderPreview.cpp" />
-    <ClCompile Include="UIOptionsDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -193,7 +192,6 @@
     <ClInclude Include="RayTracer.h" />
     <ClInclude Include="ShaderPhoto.h" />
     <ClInclude Include="ShaderPreview.h" />
-    <ClInclude Include="UIOptionsDialog.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Plan.txt" />
