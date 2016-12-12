@@ -63,3 +63,99 @@
 
 
 - NanoEngine!
+
+
+
+
+
+
+
+
+
+
+	float3 origin = ray.origin;
+	float3 dir = ray.dir;
+	
+	float NdotPos = dot( t.n, origin );
+	float NdotDir = dot( t.n, dir );
+	
+	float k = (-t.d - NdotPos) / NdotDir;
+	float3 hit = origin + dir * k;
+	
+	float3 v0 = t.pos[1] - t.pos[0];
+	float3 v1 = t.pos[2] - t.pos[0];
+	float dot00 = dot( v0, v0 );
+	float dot01 = dot( v0, v1 );
+	float dot11 = dot( v1, v1 );
+	float invDenom = 1.f / (dot00 * dot11 - dot01 * dot01);
+	
+	float3 v2 = hit - t.pos[0];
+	float dot02 = dot( v0, v2 );
+	float dot12 = dot( v1, v2 );
+
+	float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
+	float w = (dot00 * dot12 - dot01 * dot02) * invDenom;
+	float u = 1.0f - v - w;
+	
+	T = t.uv[0]*u + t.uv[1]*v + t.uv[2]*w;
+	
+	float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
+	dot11 * (dot02 - dot03) - dot01 * (dot12 - dot13)
+		dot02 - dot03 = dot( v0, v2 ) - dot( v0, v3 ) = dot( v0, v2 - v3 )
+			v2 - v3 = hit2 - hit3 = origin + dir2 * k2 - origin - dir3 * k3 = dir2*k2 - dir3*k3
+				dir2*(-t.d - NdotPos) / NdotDir2 - dir3*(-t.d - NdotPos) / NdotDir3 = (-t.d - NdotPos)*( dir2/NdotDir2 - dir3/NdotDir3 )
+			v2 - v3 = (-t.d - NdotPos)*( dir2/NdotDir2 - dir3/NdotDir3 )
+		dot12 - dot13 = dot( v1, v2 - v3 )
+	
+	U = u1 - u2 = (1 - v1 - w1 - 1 + v2 + w2) = v2-v1 + w2-w1
+	
+	U = -V-W
+	
+so:
+	dirX = ConstructRay( x+1, y )
+	dirY = ConstructRay( x, y+1 )
+	
+	float NdotDirX = dot( t.n, dirX )
+	float NdotDirY = dot( t.n, dirY )
+	float v2x = (-t.d - NdotPos)*( ray.dir / NdotDir - dirX / NdotDirX )
+	float v2y = (-t.d - NdotPos)*( ray.dir / NdotDir - dirY / NdotDirY )
+	
+	float Vx = ( dot11 * dot( v0, v2x ) - dot01 * dot( v1, v2x )) * invDenom;
+	float Wx = ( dot00 * dot( v1, v2x ) - dot01 * dot( v0, v2x )) * invDenom;
+	float Ux = -Vx -Wx;
+	float2 Tx = t.uv[0]*Ux + t.uv[1]*Vx + t.uv[2]*Wx;
+	
+	float Vy = ( dot11 * dot( v0, v2y ) - dot01 * dot( v1, v2y )) * invDenom;
+	float Wy = ( dot00 * dot( v1, v2y ) - dot01 * dot( v0, v2y )) * invDenom;
+	float Uy = -Vy -Wy;
+	float2 Ty = t.uv[0]*Uy + t.uv[1]*Vy + t.uv[2]*Wy;
+	
+	float mx = Max( Max(Tx.x, Tx.y), Max(Ty.x, Ty.y));
+	
+	0.03
+	
+	float inv = 1.0f / mx;  // 1 / 0.03 = 100 / 3 ~ 33
+	
+	float l2 = log2( inv );  // 5.01
+	
+	1.0 -> 1.0 -> 0
+	
+	5.0 -> clamp(1) -> 1.0 -> 0
+	
+	0.5 -> 2.0 -> 1
+	
+	tex(1024)
+		5.01 = (10-1) - 5.01 = lerp( 3, 4, 0.99 )
+		0    = (10-1) - 0 = 9
+		1    = (10-1) - 1 = 8
+	
+	
+
+
+	
+	
+	
+	
+
+		
+		
