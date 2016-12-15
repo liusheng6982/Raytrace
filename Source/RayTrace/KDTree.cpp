@@ -494,4 +494,5 @@ float KDTree::ComputeMipMapCoef( IntersectResult & ir, const Camera & cam ) {
 	float dUV = Max( dUV1, dUV2 );
 	dUV = Clamp( dUV, 0.0001f, 1.0f );
 
+	return ncLn( 1.0f / dUV ) * LN_2;
 }
