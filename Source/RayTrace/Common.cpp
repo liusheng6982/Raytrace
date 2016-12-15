@@ -21,6 +21,11 @@ void IntersectResult::SetTangentSpace( float3 t, float3 b ) {
 	flags |= eTangentSpace;
 }
 
+void IntersectResult::SetMipMapCoef( float coef ) {
+	mipmapcoef = coef;
+	flags |= eMipMapCoef;
+}
+
 
 
 Texture::Texture() : width(0), height(0) {}

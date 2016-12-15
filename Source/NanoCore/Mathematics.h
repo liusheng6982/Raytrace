@@ -4,6 +4,7 @@
 #include "Common.h"
 
 #define M_PI 3.14159265359f
+#define LN_2 1.442695f
 #define DEG2RAD(x) ((x)*M_PI/180.0f)
 #define RAD2DEG(x) ((x)*180.0f/M_PI)
 
@@ -16,6 +17,7 @@ float ncCos( float x );
 void  ncSinCos( float x, float & s, float & c );
 float ncFloor( float x );
 float ncPow( float x, float y );
+float ncLn( float x );
 
 
 struct float2

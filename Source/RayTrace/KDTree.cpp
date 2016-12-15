@@ -63,13 +63,23 @@ public:
 	virtual AABB GetAABB() const;
 	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags ) const;
 
+	virtual void SetCamera( const Camera & cam, const NanoCore::Image & image );
+
+	virtual float ComputeMipMapCoef( IntersectResult & hit, int x, int y );
+	virtual float ComputeMipMapCoef( IntersectResult & hit );
+
 private:
 	int  BuildTree( int l, int r );
 	void Intersect_r( int node, Ray & ray, IntersectResult & hit ) const;
+	void ComputeBarycentricCoordinates( const float3 & v, const Triangle & tri, float3 & bc ) const;
 
 	std::vector<Triangle> m_Triangles;
 	std::vector<Node> m_Tree;
 	int m_maxTrianglesPerNode;
+
+	const Camera * m_pCamera;
+	const NanoCore::Image * m_pImage;
+	float m_fPixelDistCoef;
 };
 
 IScene * CreateKDTree( int maxTrianglesPerNode ) {
@@ -315,40 +325,17 @@ void KDTree::Intersect_r( int node_index, Ray & ray, IntersectResult & result ) 
 
 			float3 hit = origin + dir * k;
 
-	#ifdef BARYCENTRIC_DATA_TRIANGLES
-			float3 v0 = t.v0;
-			float3 v1 = t.v1;
-			float dot00 = t.dot00;
-			float dot01 = t.dot01;
-			float dot11 = t.dot11;
-			float invDenom = t.invDenom;
-	#else
-			float3 v0 = t.pos[1] - t.pos[0];
-			float3 v1 = t.pos[2] - t.pos[0];
-			float dot00 = dot( v0, v0 );
-			float dot01 = dot( v0, v1 );
-			float dot11 = dot( v1, v1 );
-			float invDenom = 1.f / (dot00 * dot11 - dot01 * dot01);
-	#endif
-			float3 v2 = hit - t.pos[0];
-			float dot02 = dot( v0, v2 );
-			float dot12 = dot( v1, v2 );
-
-			// Compute barycentric coordinates
-
-			float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
-			float w = (dot00 * dot12 - dot01 * dot02) * invDenom;
-			float u = 1.0f - v - w;
+			float3 bary;
+			ComputeBarycentricCoordinates( hit, t, bary );
 
 			// Check if point is in triangle
-
-			if( u < -EPSILON || v < -EPSILON || u+v > 1+EPSILON ) continue;
+			if( bary.x < -EPSILON || bary.y < -EPSILON || bary.w < -EPSILON ) continue;
 
 			if( k < ray.hitlen ) {
 				hitlen = k;
 				best_triangle = &t;
 				best_hit = hit;
-				best_bary = float3( u, v, 1.0f - u - v );
+				best_bary = bary;
 			}
 		}
 		if( best_triangle ) {
@@ -457,4 +444,54 @@ void KDTree::InterpolateTriangleAttributes( IntersectResult & result, int flags 
 
 		result.SetTangentSpace( t, b );
 	}
+	if( flags & IntersectResult::eMipMapCoef ) {
+
+	}
+}
+
+void KDTree::ComputeBarycentricCoordinates( const float3 & pt, const Triangle & t, float3 & bc ) const {
+
+#ifdef BARYCENTRIC_DATA_TRIANGLES
+	float3 v0 = t.v0;
+	float3 v1 = t.v1;
+	float dot00 = t.dot00;
+	float dot01 = t.dot01;
+	float dot11 = t.dot11;
+	float invDenom = t.invDenom;
+#else
+	float3 v0 = t.pos[1] - t.pos[0];
+	float3 v1 = t.pos[2] - t.pos[0];
+	float dot00 = dot( v0, v0 );
+	float dot01 = dot( v0, v1 );
+	float dot11 = dot( v1, v1 );
+	float invDenom = 1.f / (dot00 * dot11 - dot01 * dot01);
+#endif
+	float3 v2 = pt - t.pos[0];
+	float dot02 = dot( v0, v2 );
+	float dot12 = dot( v1, v2 );
+
+	float v = (dot11 * dot02 - dot01 * dot12) * invDenom;
+	float w = (dot00 * dot12 - dot01 * dot02) * invDenom;
+	bc.x = 1.0f - v - w;
+	bc.y = v;
+	bc.z = w;
+}
+
+void KDTree::SetCamera( const Camera & cam, const NanoCore::Image & image ) {
+	m_pCamera = &cam;
+	m_pImage = &image;
+	m_fPixelDistCoef = ncTan( cam.fovy*0.5f ) * 2.0f / image.GetHeight();
+}
+
+float KDTree::ComputeMipMapCoef( IntersectResult & ir, const Camera & cam ) {
+	float dist = len( ir.hit - cam.pos );
+	dist *= m_fPixelDistCoef;
+
+	const Triangle * tri = (const Triangle*)ir.triangle;
+
+	float dUV1 = len(tri->uv[1] - tri->uv[0]) * dist / len(tri->pos[1] - tri->pos[0]);
+	float dUV2 = len(tri->uv[2] - tri->uv[0]) * dist / len(tri->pos[2] - tri->pos[0]);
+	float dUV = Max( dUV1, dUV2 );
+	dUV = Clamp( dUV, 0.0001f, 1.0f );
+
 }

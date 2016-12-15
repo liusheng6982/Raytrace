@@ -34,3 +34,7 @@ float ncFloor( float x ) {
 float ncPow( float x, float y ) {
 	return powf( x, y );
 }
+
+float ncLn( float x ) {
+	return logf( x );
+}

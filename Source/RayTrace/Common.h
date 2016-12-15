@@ -43,11 +43,13 @@ struct IntersectResult {
 	int    materialId;
 	float3 hit, n;  // triangle normal
 	float3 barycentric;
+	float  mipmapcoef;
 
 	enum {
 		eUV = 1,
 		eNormal = 2,
 		eTangentSpace = 4,
+		eMipMapCoef = 8,
 	};
 
 	float2 GetUV() const {
@@ -66,11 +68,16 @@ struct IntersectResult {
 		assert( flags & eTangentSpace );
 		return bitangent;
 	}
+	float GetMipMapCoef() const {
+		assert( flags & eMipMapCoef );
+		return mipmapcoef;
+	}
 	int  GetFlags() const { return flags; }
 
 	void SetUV( float2 uv );
 	void SetInterpolatedNormal( float3 n );
 	void SetTangentSpace( float3 t, float3 b );
+	void SetMipMapCoef( float coef );
 
 	IntersectResult();
 
@@ -79,6 +86,7 @@ private:
 	float3 tangent, bitangent;
 	float2 uv;
 	int flags;
+	float mipmapcoef;
 };
 
 
