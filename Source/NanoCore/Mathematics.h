@@ -16,8 +16,9 @@ float ncSin( float x );
 float ncCos( float x );
 void  ncSinCos( float x, float & s, float & c );
 float ncFloor( float x );
+float ncFrac( float x );
 float ncPow( float x, float y );
-float ncLn( float x );
+float ncLog( float x );
 
 
 struct float2
@@ -41,7 +42,10 @@ struct float2
 	}
 	friend float2 operator * ( float2 a, float k ) {
 		return float2( a.x*k, a.y*k );
-}
+	}
+	friend float len( float2 a ) {
+		return ncSqrt( a.x*a.x + a.y*a.y );
+	}
 };
 
 struct float3

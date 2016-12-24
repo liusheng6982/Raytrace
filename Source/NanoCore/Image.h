@@ -35,9 +35,12 @@ public:
 	void GetPixel( float u, float v, int * pix ) const;
 	void GetPixel( int x, int y, int * pix ) const;
 	void SetPixel( int x, int y, int * pix );
+	void GetPixelBilinear( float u, float v, int * pix ) const;
 
 	bool Load( const wchar_t * name );
 	int  WriteAsBMP( const wchar_t * name );
+
+	static void LerpColor( int * result, const int * c0, const int * c1, int coef1k, int bpp );
 
 private:
 	int     m_width,m_height,m_bpp;

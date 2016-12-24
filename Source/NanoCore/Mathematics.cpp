@@ -31,10 +31,14 @@ float ncFloor( float x ) {
 	return floorf( x );
 }
 
+float ncFrac( float x ) {
+	return x - floorf( x );
+}
+
 float ncPow( float x, float y ) {
 	return powf( x, y );
 }
 
-float ncLn( float x ) {
+float ncLog( float x ) {
 	return logf( x );
 }

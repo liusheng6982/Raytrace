@@ -124,6 +124,47 @@ void Image::GetPixel( float u, float v, int * pix ) const {
 	GetPixel( x, y, pix );
 }
 
+void Image::LerpColor( int * result, const int * c0, const int * c1, int coef1k, int bpp ) {
+	switch( bpp ) {
+		case 32: result[3] = ( c0[3]*coef1k + c1[3]*(1024-coef1k)) >> 10;
+		case 24: result[2] = ( c0[2]*coef1k + c1[2]*(1024-coef1k)) >> 10;
+		case 16: result[1] = ( c0[1]*coef1k + c1[1]*(1024-coef1k)) >> 10;
+		case  8: result[0] = ( c0[0]*coef1k + c1[0]*(1024-coef1k)) >> 10;
+	}
+}
+
+void Image::GetPixelBilinear( float u, float v, int * pix ) const {
+
+	u -= ncFloor( u );
+	v -= ncFloor( v );
+
+	int rw = GetWidth()-1, rh = GetHeight()-1;
+
+	u *= rw;
+	v *= rh;
+
+	int ulerp = int( ncFrac( u ) * 1024 );
+	int vlerp = int( ncFrac( v ) * 1024 );
+
+	int x0 = Clamp( int(u), 0, rw );
+	int y0 = Clamp( int(v), 0, rh );
+	int x1 = x0+1 < rw ? x0+1 : 0;
+	int y1 = y0+1 < rh ? y0+1 : 0;
+
+	int p00[4], p10[4], p01[4], p11[4];
+
+	GetPixel( x0, y0, p00 );
+	GetPixel( x1, y0, p10 );
+	GetPixel( x0, y1, p01 );
+	GetPixel( x1, y1, p11 );
+
+	int p0[4], p1[4];
+	LerpColor( p0, p00, p10, ulerp, m_bpp );
+	LerpColor( p1, p01, p11, ulerp, m_bpp );
+
+	LerpColor( pix, p0, p1, vlerp, m_bpp );
+}
+
 static void Interpolate( int * p0, int * p1, int coef1kRange, int * result ) {
 	result[0] = (p0[0]*(1024-coef1kRange) + p1[0]*coef1kRange) >> 10;
 	result[1] = (p0[1]*(1024-coef1kRange) + p1[1]*coef1kRange) >> 10;

@@ -65,8 +65,9 @@ public:
 
 	virtual void SetCamera( const Camera & cam, const NanoCore::Image & image );
 
-	virtual float ComputeMipMapCoef( IntersectResult & hit, int x, int y );
-	virtual float ComputeMipMapCoef( IntersectResult & hit );
+	//virtual float ComputeMipMapCoef( IntersectResult & hit, int x, int y );
+	//virtual float ComputeMipMapCoef( IntersectResult & hit ) const;
+	virtual float ComputeTextureResolution( IntersectResult & hit ) const;
 
 private:
 	int  BuildTree( int l, int r );
@@ -79,7 +80,7 @@ private:
 
 	const Camera * m_pCamera;
 	const NanoCore::Image * m_pImage;
-	float m_fPixelDistCoef;
+	float m_fPixelSizeDistanceCoef;
 };
 
 IScene * CreateKDTree( int maxTrianglesPerNode ) {
@@ -329,7 +330,7 @@ void KDTree::Intersect_r( int node_index, Ray & ray, IntersectResult & result ) 
 			ComputeBarycentricCoordinates( hit, t, bary );
 
 			// Check if point is in triangle
-			if( bary.x < -EPSILON || bary.y < -EPSILON || bary.w < -EPSILON ) continue;
+			if( bary.x < -EPSILON || bary.y < -EPSILON || bary.z < -EPSILON ) continue;
 
 			if( k < ray.hitlen ) {
 				hitlen = k;
@@ -444,9 +445,6 @@ void KDTree::InterpolateTriangleAttributes( IntersectResult & result, int flags 
 
 		result.SetTangentSpace( t, b );
 	}
-	if( flags & IntersectResult::eMipMapCoef ) {
-
-	}
 }
 
 void KDTree::ComputeBarycentricCoordinates( const float3 & pt, const Triangle & t, float3 & bc ) const {
@@ -480,12 +478,12 @@ void KDTree::ComputeBarycentricCoordinates( const float3 & pt, const Triangle & 
 void KDTree::SetCamera( const Camera & cam, const NanoCore::Image & image ) {
 	m_pCamera = &cam;
 	m_pImage = &image;
-	m_fPixelDistCoef = ncTan( cam.fovy*0.5f ) * 2.0f / image.GetHeight();
+	m_fPixelSizeDistanceCoef = ncTan( cam.fovy*0.5f ) * 2.0f / image.GetHeight();
 }
 
-float KDTree::ComputeMipMapCoef( IntersectResult & ir, const Camera & cam ) {
-	float dist = len( ir.hit - cam.pos );
-	dist *= m_fPixelDistCoef;
+float KDTree::ComputeTextureResolution( IntersectResult & ir ) const {
+	float dist = len( ir.hit - m_pCamera->pos );
+	dist *= m_fPixelSizeDistanceCoef;
 
 	const Triangle * tri = (const Triangle*)ir.triangle;
 
@@ -494,5 +492,5 @@ float KDTree::ComputeMipMapCoef( IntersectResult & ir, const Camera & cam ) {
 	float dUV = Max( dUV1, dUV2 );
 	dUV = Clamp( dUV, 0.0001f, 1.0f );
 
-	return ncLn( 1.0f / dUV ) * LN_2;
+	return 1.0f / dUV;
 }

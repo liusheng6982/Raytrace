@@ -24,6 +24,8 @@ struct Texture {
 	void   GetTexel( float2 uv, float4 & pix ) const;
 	void   GetTexel( float2 uv, int pix[4] ) const;
 	float3 GetTexel( float2 uv ) const;
+
+	void GetTexelFiltered( const float2 & uv, float mipmapcoef, float4 & pix ) const;
 };
 
 struct Material {
@@ -43,13 +45,11 @@ struct IntersectResult {
 	int    materialId;
 	float3 hit, n;  // triangle normal
 	float3 barycentric;
-	float  mipmapcoef;
 
 	enum {
 		eUV = 1,
 		eNormal = 2,
 		eTangentSpace = 4,
-		eMipMapCoef = 8,
 	};
 
 	float2 GetUV() const {
@@ -68,16 +68,11 @@ struct IntersectResult {
 		assert( flags & eTangentSpace );
 		return bitangent;
 	}
-	float GetMipMapCoef() const {
-		assert( flags & eMipMapCoef );
-		return mipmapcoef;
-	}
 	int  GetFlags() const { return flags; }
 
 	void SetUV( float2 uv );
 	void SetInterpolatedNormal( float3 n );
 	void SetTangentSpace( float3 t, float3 b );
-	void SetMipMapCoef( float coef );
 
 	IntersectResult();
 
@@ -86,7 +81,6 @@ private:
 	float3 tangent, bitangent;
 	float2 uv;
 	int flags;
-	float mipmapcoef;
 };
 
 
@@ -153,6 +147,8 @@ public:
 	virtual bool IsEmpty() const = 0;
 	virtual AABB GetAABB() const = 0;
 	virtual void InterpolateTriangleAttributes( IntersectResult & hit, int flags ) const = 0;
+	//virtual float ComputeMipMapCoef( IntersectResult & hit ) const = 0;
+	virtual float ComputeTextureResolution( IntersectResult & hit ) const = 0;
 };
 
 
